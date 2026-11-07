@@ -311,8 +311,8 @@ syn 2.0.119 (MIT OR Apache-2.0)
 syn 3.0.9 (MIT OR Apache-2.0)
 thiserror 1.0.69 (MIT OR Apache-2.0)
 thiserror 2.0.21 (MIT OR Apache-2.0)
-thiserror-impl 2.0.21 (MIT OR Apache-2.0)
 thiserror-impl 1.0.69 (MIT OR Apache-2.0)
+thiserror-impl 2.0.21 (MIT OR Apache-2.0)
 ------------------------------------------------------------------------
 Apache License
                         Version 2.0, January 2004
@@ -7111,8 +7111,8 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
 ========================================================================
-jni-sys 0.4.1 (MIT OR Apache-2.0)
 jni-sys 0.3.1 (MIT OR Apache-2.0)
+jni-sys 0.4.1 (MIT OR Apache-2.0)
 ------------------------------------------------------------------------
 Apache License
                            Version 2.0, January 2004

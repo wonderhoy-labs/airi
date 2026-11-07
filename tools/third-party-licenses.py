@@ -30,7 +30,8 @@ def shipped_packages():
             # Build tools and test libraries don't end up in anything we ship.
             if any(kind["kind"] is None for kind in dependency["dep_kinds"]):
                 pending.append(dependency["pkg"])
-    return sorted((packages[item] for item in seen - workspace), key=lambda package: package["name"])
+    # The version matters here: without it, two versions of one package would swap places between runs.
+    return sorted((packages[item] for item in seen - workspace), key=lambda package: (package["name"], package["version"]))
 
 
 def license_texts(package):
