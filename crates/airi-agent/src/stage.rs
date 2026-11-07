@@ -60,7 +60,7 @@ pub struct Stage {
     /// The size of the Android window, in pixels.
     pub view: Size<i32, Physical>,
     /// The size being drawn. It's only bigger than the view if an app won't fit, and then Android
-    /// scales the picture down.
+    /// scales the picture down to fit, keeping its shape.
     pub buffer: Size<i32, Physical>,
     pub scale: f64,
     pub desktop_id: String,

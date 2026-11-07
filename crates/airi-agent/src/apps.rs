@@ -4,6 +4,7 @@ use std::{
     collections::{HashMap, HashSet},
     env, fs,
     path::{Path, PathBuf},
+    sync::{Arc, OnceLock},
 };
 
 use serde::Serialize;
@@ -294,7 +295,20 @@ fn find_in_theme(theme: &Path, name: &str) -> Option<PathBuf> {
 const SVG_ICON_SIZE: u32 = 384;
 
 fn render_svg(data: &[u8]) -> Option<Vec<u8>> {
-    let tree = resvg::usvg::Tree::from_data(data, &resvg::usvg::Options::default()).ok()?;
+    let mut options = resvg::usvg::Options::default();
+    // Some icons are drawn with text, and that comes out blank without fonts to draw it in. Finding
+    // the fonts is slow, so it's only done for those, and only once.
+    if data.windows(5).any(|window| window == b"<text") {
+        static FONTS: OnceLock<Arc<resvg::usvg::fontdb::Database>> = OnceLock::new();
+        options.fontdb = FONTS
+            .get_or_init(|| {
+                let mut fonts = resvg::usvg::fontdb::Database::new();
+                fonts.load_system_fonts();
+                Arc::new(fonts)
+            })
+            .clone();
+    }
+    let tree = resvg::usvg::Tree::from_data(data, &options).ok()?;
     let size = tree.size();
     let scale = SVG_ICON_SIZE as f32 / size.width().max(size.height());
     let mut pixmap = resvg::tiny_skia::Pixmap::new(SVG_ICON_SIZE, SVG_ICON_SIZE)?;
@@ -302,6 +316,10 @@ fn render_svg(data: &[u8]) -> Option<Vec<u8>> {
     let dy = (SVG_ICON_SIZE as f32 - size.height() * scale) / 2.0;
     let transform = resvg::tiny_skia::Transform::from_scale(scale, scale).post_translate(dx, dy);
     resvg::render(&tree, transform, &mut pixmap.as_mut());
+    // A blank icon is worse than none, because none gets a stand-in and blank leaves a gap.
+    if pixmap.pixels().iter().all(|pixel| pixel.alpha() == 0) {
+        return None;
+    }
     pixmap.encode_png().ok()
 }
 
