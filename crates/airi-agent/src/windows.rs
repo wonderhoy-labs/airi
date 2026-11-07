@@ -1,6 +1,6 @@
 //! What happens to Linux windows: which Android window each one goes to, and how it's laid out there.
 
-use std::time::Instant;
+use std::time::{Duration, Instant};
 
 use smithay::{
     desktop::{Window, WindowSurface},
@@ -28,6 +28,10 @@ use crate::{
 
 /// The size a window gets when no Android window is showing it yet.
 const DEFAULT_SIZE: (i32, i32) = (800, 600);
+
+/// How long a new Android window gets to open before its Linux window is offered again. Offering it
+/// again sooner could open two, and the second would take the window from the first.
+const ANNOUNCE_AGAIN_AFTER: Duration = Duration::from_secs(5);
 
 pub fn window_title(window: &Window) -> String {
     match window.underlying_surface() {
@@ -85,7 +89,7 @@ impl State {
             window,
             desktop_id: String::new(),
             stage: None,
-            announced: false,
+            announced: None,
             last_title: String::new(),
         });
         id
@@ -222,9 +226,10 @@ impl State {
     }
 
     /// Tells an open Android window that another one is needed, since only a visible app can start one.
+    /// One in the background gets refused, so this has to be able to happen again.
     fn announce_window(&mut self, index: usize) {
         let tracked = &mut self.windows[index];
-        if tracked.announced {
+        if tracked.announced.is_some_and(|time| time.elapsed() < ANNOUNCE_AGAIN_AFTER) {
             return;
         }
         let target = self
@@ -234,9 +239,18 @@ impl State {
             .max_by_key(|stage| stage.focused)
             .or_else(|| self.stages.values().max_by_key(|stage| stage.focused));
         if let Some(stage) = target {
-            tracked.announced = true;
+            tracked.announced = Some(Instant::now());
             let payload = Payload::default().u32(tracked.id).string(&tracked.desktop_id).string(&tracked.last_title);
             stage.out.send(to_android::NEW_WINDOW, payload.0);
+        }
+    }
+
+    /// Offers windows that nothing is showing to an Android window that has just come to the front.
+    pub fn announce_unshown_windows(&mut self) {
+        for index in 0..self.windows.len() {
+            if self.windows[index].stage.is_none() {
+                self.announce_window(index);
+            }
         }
     }
 
@@ -333,7 +347,7 @@ impl State {
         let focused = stage.focused;
         let tracked = &mut self.windows[index];
         tracked.stage = Some(conn);
-        tracked.announced = true;
+        tracked.announced = Some(Instant::now());
         let payload = Payload::default().u32(id).string(&tracked.desktop_id).string(&tracked.last_title);
         self.stages[&conn].out.send(to_android::ATTACHED, payload.0);
         if focused {
@@ -360,7 +374,7 @@ impl State {
         let focused = stage.focused;
         let tracked = &mut self.windows[index];
         tracked.stage = Some(conn);
-        tracked.announced = true;
+        tracked.announced = Some(Instant::now());
         if focused {
             self.focus_stage(conn);
         }

@@ -188,7 +188,8 @@ pub struct Tracked {
     pub window: Window,
     pub desktop_id: String,
     pub stage: Option<ConnId>,
-    pub announced: bool,
+    /// When Android was last told about this window, if it still needs telling.
+    pub announced: Option<Instant>,
     pub last_title: String,
 }
 

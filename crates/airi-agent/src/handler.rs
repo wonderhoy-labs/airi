@@ -164,6 +164,7 @@ impl State {
                 if focused {
                     self.focus_stage(conn);
                     self.send_cursor();
+                    self.announce_unshown_windows();
                 } else {
                     self.unfocus_stage(conn);
                 }
@@ -319,7 +320,7 @@ impl State {
         for tracked in self.windows.iter_mut().filter(|t| t.stage == Some(conn)) {
             tracked.stage = None;
             // Announce it again in case another Android window can take it.
-            tracked.announced = false;
+            tracked.announced = None;
             stage.space.unmap_elem(&tracked.window);
         }
         self.dh.remove_global::<State>(stage.global.clone());

@@ -85,11 +85,11 @@ fit, so they still fill the window. If you install something new in Linux, it sh
 
 ### From the terminal
 
-To open something in Android from the terminal, run it with `airi-agent`. Android gets a window for it if a Linux app is already
-open in Airi.
+To run something from the terminal and see it in Android, start it with `airi-agent`. It gets a window of its own when you next switch to
+a Linux app, because Android doesn't let an app in the background open one.
 
 ```bash
-~/.local/bin/airi-agent run gnome-calculator
+~/.local/bin/airi-agent run mousepad
 ```
 
 ## What works
