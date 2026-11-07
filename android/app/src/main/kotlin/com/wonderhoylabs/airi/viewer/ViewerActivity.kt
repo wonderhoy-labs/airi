@@ -66,6 +66,7 @@ class ViewerActivity : Activity(), SurfaceHolder.Callback, LinuxView.Input {
     private val sizeLock = Object()
     private var session: Thread? = null
     @Volatile private var keyboardWanted = false
+    @Volatile private var overlayShown = true
     private var lastClipboard: String? = null
     private var appIcon: Bitmap? = null
 
@@ -178,11 +179,14 @@ class ViewerActivity : Activity(), SurfaceHolder.Callback, LinuxView.Input {
         setTaskDescription(ActivityManager.TaskDescription(label, appIcon))
     }
 
-    private fun showStatus(text: String, working: Boolean = true) = runOnUiThread {
-        overlay.visibility = View.VISIBLE
-        spinner.visibility = if (working) View.VISIBLE else View.GONE
-        retry.visibility = if (working) View.GONE else View.VISIBLE
-        status.text = text
+    private fun showStatus(text: String, working: Boolean = true) {
+        overlayShown = true
+        runOnUiThread {
+            overlay.visibility = View.VISIBLE
+            spinner.visibility = if (working) View.VISIBLE else View.GONE
+            retry.visibility = if (working) View.GONE else View.VISIBLE
+            status.text = text
+        }
     }
 
     private fun startSession() {
@@ -322,7 +326,8 @@ class ViewerActivity : Activity(), SurfaceHolder.Callback, LinuxView.Input {
                     frameHeight = height
                     runOnUiThread(::fitPicture)
                 }
-                if (overlay.visibility == View.VISIBLE) {
+                if (overlayShown) {
+                    overlayShown = false
                     runOnUiThread {
                         overlay.visibility = View.GONE
                         updateKeyboardButton()
