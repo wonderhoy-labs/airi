@@ -74,6 +74,8 @@ class ViewerActivity : Activity(), SurfaceHolder.Callback, LinuxView.Input {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        // Tells the app on the launcher that this closed on purpose, if it's what opened this.
+        setResult(RESULT_OK)
         val uri = intent.data
         desktopId = uri?.lastPathSegment.orEmpty()
         windowId = uri?.getQueryParameter("window")?.toIntOrNull() ?: 0

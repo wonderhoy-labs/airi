@@ -20,11 +20,16 @@ public final class LaunchActivity extends Activity {
     private static final String AIRI = "com.wonderhoylabs.airi";
     private static final int VIEWER = 1;
 
+    private boolean reopened;
+
     @Override
     protected void onCreate(Bundle state) {
         super.onCreate(state);
         // Coming back after Android reclaimed this process, with the window still open above it.
-        if (state != null) return;
+        if (state == null) open();
+    }
+
+    private void open() {
         try (InputStream in = getAssets().open("desktop_id")) {
             String desktopId = new String(in.readAllBytes(), StandardCharsets.UTF_8).trim();
             Intent intent = new Intent(Intent.ACTION_VIEW, new Uri.Builder()
@@ -37,9 +42,18 @@ public final class LaunchActivity extends Activity {
         }
     }
 
-    /** The window closed, so this has nothing left to do. */
+    /**
+     * Airi says when a window closed normally, and that leaves nothing to do. Otherwise Airi was updated
+     * or stopped underneath this, and someone has just tapped the icon, so it has to open again. Once is
+     * enough, in case that's what stopped it.
+     */
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
-        finish();
+        if (resultCode == RESULT_OK || reopened) {
+            finish();
+        } else {
+            reopened = true;
+            open();
+        }
     }
 }
