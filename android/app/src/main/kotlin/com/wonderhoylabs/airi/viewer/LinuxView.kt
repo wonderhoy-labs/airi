@@ -20,16 +20,15 @@ class LinuxView(context: Context, private val input: Input) : SurfaceView(contex
         fun text(text: String)
     }
 
-    /** The size of the picture, which is larger than the view if an app won't shrink to fit it. */
-    @Volatile var frameWidth = 0
+    /** How many of the picture's pixels each of this view's stands for. It's 1 unless an app won't fit. */
+    @Volatile var pictureScale = 1f
 
     init {
         isFocusable = true
         isFocusableInTouchMode = true
     }
 
-    private fun toFrame(value: Float): Float =
-        if (frameWidth > 0 && width > 0) value * frameWidth / width else value
+    private fun toFrame(value: Float): Float = value * pictureScale
 
     override fun onTouchEvent(event: MotionEvent): Boolean {
         if (event.isFromSource(InputDevice.SOURCE_MOUSE)) {

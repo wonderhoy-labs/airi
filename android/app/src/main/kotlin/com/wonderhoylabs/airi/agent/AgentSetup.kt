@@ -18,6 +18,7 @@ object AgentSetup {
     private const val INSTALLER_ASSET = "install.sh"
     private const val PREFS = "airi"
     private const val TOKEN = "token"
+    private const val CONNECTED_BEFORE = "connected_before"
 
     /**
      * Debug builds can be pointed at another agent through this file in the app's external files.
@@ -51,7 +52,13 @@ object AgentSetup {
     fun token(context: Context): ByteArray = hexToken(context).hexToByteArray()
 
     fun connect(context: Context, role: Int): AgentConnection =
-        AgentConnection.connect(address(context), token(context), role)
+        AgentConnection.connect(address(context), token(context), role).also {
+            context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().putBoolean(CONNECTED_BEFORE, true).apply()
+        }
+
+    /** Tells someone who only needs to start Linux from someone who hasn't set Airi up yet. */
+    fun connectedBefore(context: Context): Boolean =
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getBoolean(CONNECTED_BEFORE, false)
 
     fun terminalIntent(context: Context): Intent? =
         context.packageManager.getLaunchIntentForPackage(TERMINAL_PACKAGE)

@@ -97,6 +97,40 @@ impl Canvas {
     }
 }
 
+/// What's on screen when the picture is smaller than the surface. It keeps whatever was there below
+/// and to the right of the picture, because when the keyboard closes that's the bottom of the same
+/// window, which looks right for the moment until the app has drawn the rest.
+#[derive(Default)]
+pub struct Screen {
+    pub width: u32,
+    pub height: u32,
+    pub pixels: Vec<u8>,
+}
+
+impl Screen {
+    pub fn set_size(&mut self, width: u32, height: u32) {
+        if (width, height) != (self.width, self.height) {
+            self.width = width;
+            self.height = height;
+            self.pixels.clear();
+            self.pixels.resize(width as usize * height as usize * BYTES_PER_PIXEL, 0);
+        }
+    }
+
+    pub fn holds(&self, canvas: &Canvas) -> bool {
+        canvas.width <= self.width && canvas.height <= self.height
+    }
+
+    /// Copies the picture to the top left. It has to fit, which `holds` says.
+    pub fn show(&mut self, canvas: &Canvas) {
+        let row = canvas.width as usize * BYTES_PER_PIXEL;
+        let stride = self.width as usize * BYTES_PER_PIXEL;
+        for (y, source) in canvas.pixels.chunks_exact(row.max(1)).enumerate() {
+            self.pixels[y * stride..y * stride + row].copy_from_slice(source);
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -132,6 +166,40 @@ mod tests {
         canvas.apply(&frame(3, 1, &[])).unwrap();
         assert_eq!((canvas.width, canvas.height), (3, 1));
         assert_eq!(canvas.pixels, vec![0; 12]);
+    }
+
+    #[test]
+    fn a_smaller_picture_leaves_what_was_below_it() {
+        let mut canvas = Canvas::default();
+        let mut screen = Screen::default();
+        screen.set_size(2, 3);
+        canvas.apply(&frame(2, 3, &[(0, 0, 2, 3, 5)])).unwrap();
+        assert!(screen.holds(&canvas));
+        screen.show(&canvas);
+        canvas.apply(&frame(2, 1, &[(0, 0, 2, 1, 9)])).unwrap();
+        screen.show(&canvas);
+        let pixel = |y: usize| screen.pixels[y * 2 * 4];
+        assert_eq!((pixel(0), pixel(1), pixel(2)), (9, 5, 5));
+    }
+
+    #[test]
+    fn a_narrower_picture_lands_on_the_right_rows() {
+        let mut canvas = Canvas::default();
+        let mut screen = Screen::default();
+        screen.set_size(3, 2);
+        canvas.apply(&frame(2, 2, &[(0, 0, 2, 2, 7)])).unwrap();
+        screen.show(&canvas);
+        let pixel = |x: usize, y: usize| screen.pixels[(y * 3 + x) * 4];
+        assert_eq!((pixel(1, 1), pixel(2, 1), pixel(2, 0)), (7, 0, 0));
+    }
+
+    #[test]
+    fn a_picture_bigger_than_the_screen_isnt_held() {
+        let mut canvas = Canvas::default();
+        let mut screen = Screen::default();
+        screen.set_size(2, 2);
+        canvas.apply(&frame(2, 3, &[])).unwrap();
+        assert!(!screen.holds(&canvas));
     }
 
     #[test]

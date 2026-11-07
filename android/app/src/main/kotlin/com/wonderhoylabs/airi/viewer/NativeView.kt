@@ -12,6 +12,7 @@ object NativeView {
     external fun create(): Long
     external fun destroy(handle: Long)
     external fun setSurface(handle: Long, surface: Surface?)
+    external fun setArea(handle: Long, width: Int, height: Int)
 
     /** Applies a frame from a direct buffer. Returns `width << 32 | height`, or -1 if it was bad. */
     external fun frame(handle: Long, buffer: ByteBuffer, length: Int): Long

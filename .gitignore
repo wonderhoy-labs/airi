@@ -13,3 +13,6 @@ local.properties
 .idea/
 .vscode/
 .DS_Store
+
+# Built by tools/build-agent.sh
+dist/

@@ -23,7 +23,7 @@ use crate::{
     apps, launch,
     net::{ConnId, NetEvent},
     proto::{self, Incoming, Payload, to_android},
-    stage::{LAUNCH_TIMEOUT, Stage, Waiting},
+    stage::{LAUNCH_TIMEOUT, PendingResize, RESIZE_PATIENCE, Stage, Waiting},
     state::{Event, State, next_serial},
     windows::window_title,
 };
@@ -79,6 +79,9 @@ fn key_for_char(c: char) -> Option<(u32, bool)> {
 }
 
 const KEY_LEFT_SHIFT: u32 = 42;
+
+/// How long text input has to stay off before Android's keyboard closes.
+const IME_HIDE_DELAY: Duration = Duration::from_millis(150);
 
 #[derive(Serialize)]
 struct WindowInfo {
@@ -292,17 +295,29 @@ impl State {
         let scale = sanitize_scale(scale);
         let renderer = &mut self.renderer;
         let Some(stage) = self.stages.get_mut(&conn) else { return };
-        if stage.view == view && stage.scale == scale {
+        let target = stage.pending_resize.as_ref().map_or(stage.view, |pending| pending.view);
+        if target == view && stage.scale == scale {
             return;
         }
+        let window = stage.main.and_then(|id| self.windows.iter().find(|t| t.id == id));
+        // With a window to wait for, keep showing what's there until it has drawn the new size. A
+        // change of scale redraws everything anyway, and happens too rarely to be worth smoothing.
+        if let (Some(window), true) = (window, stage.scale == scale) {
+            // A window being dragged asks again every frame, so this keeps the first deadline. Waiting
+            // for the app to catch up with the very latest size would freeze the picture for the drag.
+            let until = stage.pending_resize.as_ref().map_or(Instant::now() + RESIZE_PATIENCE, |p| p.until);
+            stage.pending_resize = Some(PendingResize { view, until });
+            crate::windows::configure_window(&window.window, stage.logical_size_of(view), stage.focused);
+            return;
+        }
+        stage.pending_resize = None;
         if let Err(err) = stage.resize(renderer, view, scale) {
             error!(?err, "couldn't resize a window");
             return;
         }
         stage.update_surface_scale();
         let size = stage.view_logical_size();
-        let main = stage.main;
-        if let Some(window) = main.and_then(|id| self.windows.iter().find(|t| t.id == id)) {
+        if let Some(window) = window {
             crate::windows::configure_window(&window.window, size, stage.focused);
         }
     }
@@ -452,7 +467,11 @@ impl State {
     pub fn tick(&mut self) {
         let time: Duration = self.clock.now().into();
         let renderer = &mut self.renderer;
+        let now = Instant::now();
         for stage in self.stages.values_mut() {
+            if stage.pending_resize.as_ref().is_some_and(|pending| now >= pending.until) {
+                stage.finish_resize(renderer);
+            }
             if stage.can_draw() {
                 stage.draw(renderer, time);
             }
@@ -475,14 +494,21 @@ impl State {
         }
     }
 
-    /// Opens or closes Android's keyboard as text fields gain and lose focus.
+    /// Opens or closes Android's keyboard as text fields gain and lose focus. Toolkits can switch text
+    /// input off and on again as they go, and closing for that would make the whole window jump.
     fn update_ime(&mut self) {
         let mut wanted = false;
         self.seat.text_input().with_active_text_input(|_, _| wanted = true);
+        if wanted || !self.ime_wanted {
+            self.ime_off_since = None;
+        } else if self.ime_off_since.get_or_insert_with(Instant::now).elapsed() < IME_HIDE_DELAY {
+            return;
+        }
         if wanted == self.ime_wanted {
             return;
         }
         self.ime_wanted = wanted;
+        self.ime_off_since = None;
         if let Some(stage) = self.stages.values().find(|stage| stage.focused) {
             stage.out.send(to_android::IME, Payload::default().u8(wanted as u8).0);
         }
@@ -496,6 +522,13 @@ impl State {
         let mut wake = Duration::from_millis(1000);
         if self.stages.values().any(|stage| stage.waiting.is_some()) {
             wake = wake.min(Duration::from_millis(100));
+        }
+        if self.ime_off_since.is_some() {
+            wake = wake.min(Duration::from_millis(20));
+        }
+        let now = Instant::now();
+        for pending in self.stages.values().filter_map(|stage| stage.pending_resize.as_ref()) {
+            wake = wake.min(pending.until.saturating_duration_since(now));
         }
         wake
     }

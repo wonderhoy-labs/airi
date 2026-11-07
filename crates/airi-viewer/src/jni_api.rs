@@ -12,7 +12,7 @@ use jni::{
     sys::{jint, jlong},
 };
 
-use crate::Canvas;
+use crate::{Canvas, Screen};
 
 #[repr(C)]
 struct NativeWindow {
@@ -43,6 +43,7 @@ unsafe extern "C" {
 
 struct Viewer {
     canvas: Canvas,
+    screen: Screen,
     window: *mut NativeWindow,
     window_size: (u32, u32),
 }
@@ -60,10 +61,20 @@ impl Viewer {
     }
 
     fn draw(&mut self) {
-        let (width, height) = (self.canvas.width, self.canvas.height);
-        if self.window.is_null() || width == 0 {
+        if self.window.is_null() || self.canvas.width == 0 {
             return;
         }
+        // Normally the buffer is the size of the surface, and never changes when the keyboard comes
+        // and goes. Only a picture too big for the surface makes Android scale it.
+        let held = self.screen.width > 0 && self.screen.holds(&self.canvas);
+        if held {
+            self.screen.show(&self.canvas);
+        }
+        let (width, height, pixels) = if held {
+            (self.screen.width, self.screen.height, &self.screen.pixels)
+        } else {
+            (self.canvas.width, self.canvas.height, &self.canvas.pixels)
+        };
         if self.window_size != (width, height) {
             let result =
                 unsafe { ANativeWindow_setBuffersGeometry(self.window, width as i32, height as i32, FORMAT_RGBX) };
@@ -89,7 +100,7 @@ impl Viewer {
         let source_stride = width as usize * 4;
         let target_stride = buffer.stride as usize * 4;
         for y in 0..rows {
-            let source = &self.canvas.pixels[y * source_stride..y * source_stride + row];
+            let source = &pixels[y * source_stride..y * source_stride + row];
             // Safety: Android gives us `height` rows of `stride` pixels, and this stays within both.
             unsafe {
                 ptr::copy_nonoverlapping(
@@ -116,7 +127,12 @@ fn viewer(handle: jlong) -> &'static Mutex<Viewer> {
 
 #[unsafe(no_mangle)]
 pub extern "system" fn Java_com_wonderhoylabs_airi_viewer_NativeView_create(_env: JNIEnv, _class: JClass) -> jlong {
-    let viewer = Viewer { canvas: Canvas::default(), window: ptr::null_mut(), window_size: (0, 0) };
+    let viewer = Viewer {
+        canvas: Canvas::default(),
+        screen: Screen::default(),
+        window: ptr::null_mut(),
+        window_size: (0, 0),
+    };
     Box::into_raw(Box::new(Mutex::new(viewer))) as jlong
 }
 
@@ -142,6 +158,20 @@ pub extern "system" fn Java_com_wonderhoylabs_airi_viewer_NativeView_setSurface(
     };
     let mut viewer = viewer(handle).lock().unwrap();
     viewer.set_window(window);
+    viewer.draw();
+}
+
+/// Sets the size of the surface's area, in pixels.
+#[unsafe(no_mangle)]
+pub extern "system" fn Java_com_wonderhoylabs_airi_viewer_NativeView_setArea(
+    _env: JNIEnv,
+    _class: JClass,
+    handle: jlong,
+    width: jint,
+    height: jint,
+) {
+    let mut viewer = viewer(handle).lock().unwrap();
+    viewer.screen.set_size(width as u32, height as u32);
     viewer.draw();
 }
 

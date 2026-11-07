@@ -43,6 +43,16 @@ pub const REPLACEMENT_GRACE: Duration = Duration::from_millis(1500);
 /// How long an app gets to open a window after being launched.
 pub const LAUNCH_TIMEOUT: Duration = Duration::from_secs(90);
 
+/// How long a window gets to redraw at a new size before the picture moves on without it. The keyboard
+/// takes about this long to slide, so an app that keeps up never shows anything but finished frames.
+pub const RESIZE_PATIENCE: Duration = Duration::from_millis(250);
+
+/// A size Android asked for that the app hasn't drawn yet.
+pub struct PendingResize {
+    pub view: Size<i32, Physical>,
+    pub until: Instant,
+}
+
 pub struct Waiting {
     pub until: Instant,
     pub launched_pid: Option<u32>,
@@ -68,6 +78,7 @@ pub struct Stage {
     pub children: Vec<u32>,
     pub overrides: Vec<Window>,
     pub waiting: Option<Waiting>,
+    pub pending_resize: Option<PendingResize>,
     pub visible: bool,
     pub focused: bool,
     pub dirty: bool,
@@ -128,6 +139,7 @@ impl Stage {
             children: Vec::new(),
             overrides: Vec::new(),
             waiting: None,
+            pending_resize: None,
             visible: true,
             focused: false,
             dirty: true,
@@ -211,7 +223,20 @@ impl Stage {
     }
 
     pub fn can_draw(&self) -> bool {
-        self.visible && self.dirty && self.frames_in_flight < MAX_FRAMES_IN_FLIGHT
+        self.pending_resize.is_none() && self.visible && self.dirty && self.frames_in_flight < MAX_FRAMES_IN_FLIGHT
+    }
+
+    /// The size a window should be for this view, at the current scale.
+    pub fn logical_size_of(&self, view: Size<i32, Physical>) -> Size<i32, Logical> {
+        logical(view, self.scale)
+    }
+
+    /// Moves to the size that was waiting, once the app has drawn it or run out of time.
+    pub fn finish_resize(&mut self, renderer: &mut PixmanRenderer) {
+        let Some(pending) = self.pending_resize.take() else { return };
+        if let Err(err) = self.resize(renderer, pending.view, self.scale) {
+            warn!(?err, "couldn't resize a window");
+        }
     }
 
     pub fn map(&mut self, window: Window, location: Point<i32, Logical>, activate: bool) {

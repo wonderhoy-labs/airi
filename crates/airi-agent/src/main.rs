@@ -159,6 +159,7 @@ fn serve(port: u16, token_path: Option<PathBuf>) -> anyhow::Result<()> {
         idle_output,
         last_idle_frames: Instant::now(),
         ime_wanted: false,
+        ime_off_since: None,
         android_clipboard: None,
         linux_clipboard: None,
         cursor: CursorImageStatus::default_named(),

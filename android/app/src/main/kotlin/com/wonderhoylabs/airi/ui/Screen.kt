@@ -67,8 +67,9 @@ fun Screen(
             when (state.stage) {
                 Stage.CHECKING -> item { Waiting(stringResource(R.string.status_checking)) }
                 Stage.NO_TERMINAL -> item { NoTerminal() }
-                Stage.SETUP -> item { SetUp(again = false, onSetUp, onOpenTerminal) }
-                Stage.SETUP_AGAIN -> item { SetUp(again = true, onSetUp, onOpenTerminal) }
+                Stage.SETUP -> item { SetUp(again = false, onSetUp) }
+                Stage.SETUP_AGAIN -> item { SetUp(again = true, onSetUp) }
+                Stage.LINUX_OFF -> item { LinuxOff(onOpenTerminal, onSetUp) }
                 Stage.UPDATING -> item { Waiting(stringResource(R.string.status_updating)) }
                 Stage.READY -> {
                     if (state.apps.isEmpty()) {
@@ -172,7 +173,7 @@ private fun Step(number: Int, text: String) {
 }
 
 @Composable
-private fun SetUp(again: Boolean, onSetUp: () -> Unit, onOpenTerminal: () -> Unit) {
+private fun SetUp(again: Boolean, onSetUp: () -> Unit) {
     InfoCard {
         Text(
             stringResource(if (again) R.string.setup_again_title else R.string.setup_title),
@@ -188,14 +189,20 @@ private fun SetUp(again: Boolean, onSetUp: () -> Unit, onOpenTerminal: () -> Uni
         Button(onClick = onSetUp, modifier = Modifier.fillMaxWidth()) {
             Text(stringResource(R.string.setup_button))
         }
-        OutlinedButton(onClick = onOpenTerminal, modifier = Modifier.fillMaxWidth()) {
+    }
+}
+
+@Composable
+private fun LinuxOff(onOpenTerminal: () -> Unit, onSetUp: () -> Unit) {
+    InfoCard {
+        Text(stringResource(R.string.linux_off_title), style = MaterialTheme.typography.titleMedium)
+        Text(stringResource(R.string.linux_off_body), style = MaterialTheme.typography.bodyMedium)
+        Button(onClick = onOpenTerminal, modifier = Modifier.fillMaxWidth()) {
             Text(stringResource(R.string.setup_start_linux))
         }
-        Text(
-            stringResource(R.string.setup_already),
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
+        OutlinedButton(onClick = onSetUp, modifier = Modifier.fillMaxWidth()) {
+            Text(stringResource(R.string.linux_off_set_up_again))
+        }
     }
 }
 

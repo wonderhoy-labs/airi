@@ -5,4 +5,4 @@ mod frame;
 #[cfg(target_os = "android")]
 mod jni_api;
 
-pub use frame::{Canvas, FrameError};
+pub use frame::{Canvas, FrameError, Screen};

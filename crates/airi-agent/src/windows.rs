@@ -135,6 +135,14 @@ impl State {
         let Some(stage) = self.stages.get_mut(&conn) else { return };
         let size = window.geometry().size;
         if stage.main == Some(id) {
+            // Until the app has caught up, this commit is still the old size, and using it would make
+            // the picture jump back for a moment.
+            if let Some(pending) = &stage.pending_resize {
+                if !has_reached(window, stage.logical_size_of(pending.view)) {
+                    return;
+                }
+                stage.finish_resize(renderer);
+            }
             if size.w > 0 && size.h > 0 {
                 stage.fit_to(renderer, size);
             }
@@ -622,6 +630,15 @@ pub fn configure_window(window: &Window, size: Size<i32, Logical>, activated: bo
             let _ = surface.set_maximized(true);
             let _ = surface.configure(Rectangle::from_size(size));
         }
+    }
+}
+
+/// Whether a window has drawn what it was last told to. An app that won't go that small counts, since
+/// it has answered, and a size it refuses is dealt with by scaling the picture.
+fn has_reached(window: &Window, size: Size<i32, Logical>) -> bool {
+    match window.underlying_surface() {
+        WindowSurface::Wayland(toplevel) => toplevel.current_state().size == Some(size),
+        WindowSurface::X11(surface) => surface.geometry().size == size,
     }
 }
 

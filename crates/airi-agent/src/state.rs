@@ -230,6 +230,7 @@ pub struct State {
     pub last_idle_frames: Instant,
 
     pub ime_wanted: bool,
+    pub ime_off_since: Option<Instant>,
     pub android_clipboard: Option<String>,
     pub linux_clipboard: Option<String>,
     pub cursor: CursorImageStatus,

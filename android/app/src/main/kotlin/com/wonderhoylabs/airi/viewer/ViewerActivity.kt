@@ -17,6 +17,7 @@ import android.view.SurfaceHolder
 import android.view.View
 import android.view.ViewGroup.LayoutParams.MATCH_PARENT
 import android.view.WindowInsets
+import android.view.WindowInsetsAnimation
 import android.widget.Button
 import android.widget.FrameLayout
 import android.widget.ImageButton
@@ -55,13 +56,16 @@ class ViewerActivity : Activity(), SurfaceHolder.Callback, LinuxView.Input {
     @Volatile private var closing = false
     @Volatile private var areaWidth = 0
     @Volatile private var areaHeight = 0
+    @Volatile private var keyboardCover = 0
+    @Volatile private var offeredWidth = 0
+    @Volatile private var offeredHeight = 0
     @Volatile private var frameWidth = 0
     @Volatile private var frameHeight = 0
     @Volatile private var visible = false
     @Volatile private var focused = false
     private val sizeLock = Object()
     private var session: Thread? = null
-    private var keyboardWanted = false
+    @Volatile private var keyboardWanted = false
     private var lastClipboard: String? = null
     private var appIcon: Bitmap? = null
 
@@ -87,8 +91,8 @@ class ViewerActivity : Activity(), SurfaceHolder.Callback, LinuxView.Input {
     private fun buildViews() {
         val root = FrameLayout(this)
         root.setBackgroundColor(Color.BLACK)
-        // What's offered to Linux is this area. The picture inside it is usually the same size, but an
-        // app that won't shrink that far gets scaled down, keeping its shape, so it's all still there.
+        // The surface fills this area and keeps its size when the keyboard opens, which just slides
+        // over it. Resizing a surface and its contents can't happen in step, and it shows.
         area = FrameLayout(this)
         area.addOnLayoutChangeListener { _, left, top, right, bottom, _, _, _, _ ->
             onAreaSize(right - left, bottom - top)
@@ -96,7 +100,7 @@ class ViewerActivity : Activity(), SurfaceHolder.Callback, LinuxView.Input {
         root.addView(area, FrameLayout.LayoutParams(MATCH_PARENT, MATCH_PARENT))
         linuxView = LinuxView(this, this)
         linuxView.holder.addCallback(this)
-        area.addView(linuxView, FrameLayout.LayoutParams(MATCH_PARENT, MATCH_PARENT, Gravity.CENTER))
+        area.addView(linuxView, FrameLayout.LayoutParams(MATCH_PARENT, MATCH_PARENT, Gravity.TOP or Gravity.CENTER_HORIZONTAL))
 
         val padding = (24 * scale).toInt()
         overlay = LinearLayout(this).apply {
@@ -138,13 +142,19 @@ class ViewerActivity : Activity(), SurfaceHolder.Callback, LinuxView.Input {
             },
         )
 
-        // Android stopped resizing windows for the keyboard by itself, so make room for it here.
         root.setOnApplyWindowInsetsListener { view, insets ->
-            val bars = insets.getInsets(WindowInsets.Type.systemBars() or WindowInsets.Type.ime() or WindowInsets.Type.displayCutout())
+            val bars = insets.getInsets(WindowInsets.Type.systemBars() or WindowInsets.Type.displayCutout())
             view.setPadding(bars.left, bars.top, bars.right, bars.bottom)
             keyboardWanted = insets.isVisible(WindowInsets.Type.ime())
+            keyboardCover = maxOf(0, insets.getInsets(WindowInsets.Type.ime()).bottom - bars.bottom)
+            offerSize()
             WindowInsets.CONSUMED
         }
+        // Having one of these makes Android report where the keyboard will end up as it starts moving,
+        // not after it's gone, so the app redraws during the slide instead of after it.
+        root.setWindowInsetsAnimationCallback(object : WindowInsetsAnimation.Callback(DISPATCH_MODE_STOP) {
+            override fun onProgress(insets: WindowInsets, running: List<WindowInsetsAnimation>) = insets
+        })
         setContentView(root)
         window.setDecorFitsSystemWindows(false)
         linuxView.requestFocus()
@@ -239,7 +249,7 @@ class ViewerActivity : Activity(), SurfaceHolder.Callback, LinuxView.Input {
         waitForArea()
         agent.send(
             Protocol.OPEN,
-            Payload().string(desktopId).u32(windowId).u32(areaWidth).u32(areaHeight).f32(scale),
+            Payload().string(desktopId).u32(windowId).u32(offeredWidth).u32(offeredHeight).f32(scale),
         )
         opened = true
         agent.send(Protocol.VISIBLE, Payload().u8(if (visible) 1 else 0))
@@ -257,27 +267,40 @@ class ViewerActivity : Activity(), SurfaceHolder.Callback, LinuxView.Input {
 
     private fun waitForArea() {
         synchronized(sizeLock) {
-            while (areaWidth == 0) sizeLock.wait()
+            while (offeredWidth == 0) sizeLock.wait()
         }
     }
 
     private fun onAreaSize(width: Int, height: Int) {
+        // A picture being scaled makes the surface smaller than the area, and that isn't a new area.
         if (width == 0 || height == 0 || (width == areaWidth && height == areaHeight)) return
+        areaWidth = width
+        areaHeight = height
+        NativeView.setArea(native, width, height)
+        fitPicture()
+        offerSize()
+    }
+
+    /** Tells Linux how much room there is, which is whatever the keyboard isn't covering. */
+    private fun offerSize() {
+        val width = areaWidth
+        val height = areaHeight - keyboardCover
+        if (width == 0 || height <= 0 || (width == offeredWidth && height == offeredHeight)) return
         synchronized(sizeLock) {
-            areaWidth = width
-            areaHeight = height
+            offeredWidth = width
+            offeredHeight = height
             sizeLock.notifyAll()
         }
-        fitPicture()
         sendWhileOpen(Protocol.RESIZE, Payload().u32(width).u32(height).f32(scale))
     }
 
-    /** Sizes the surface to show the whole picture without changing its shape. */
+    /** Scales the picture down if an app won't fit the area. Almost all of the time, it does. */
     private fun fitPicture() {
         if (frameWidth == 0 || areaWidth == 0) return
-        val fit = minOf(areaWidth.toFloat() / frameWidth, areaHeight.toFloat() / frameHeight)
-        val width = (frameWidth * fit).roundToInt()
-        val height = (frameHeight * fit).roundToInt()
+        val fit = minOf(1f, areaWidth.toFloat() / frameWidth, areaHeight.toFloat() / frameHeight)
+        val width = if (fit < 1f) (frameWidth * fit).roundToInt() else MATCH_PARENT
+        val height = if (fit < 1f) (frameHeight * fit).roundToInt() else MATCH_PARENT
+        linuxView.pictureScale = 1 / fit
         val params = linuxView.layoutParams
         if (params.width != width || params.height != height) {
             params.width = width
@@ -293,7 +316,6 @@ class ViewerActivity : Activity(), SurfaceHolder.Callback, LinuxView.Input {
                 if (size < 0) throw IOException("Bad frame")
                 val width = (size ushr 32).toInt()
                 val height = size.toInt()
-                linuxView.frameWidth = width
                 agent.send(Protocol.FRAME_ACK)
                 if (width != frameWidth || height != frameHeight) {
                     frameWidth = width

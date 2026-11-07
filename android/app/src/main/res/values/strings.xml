@@ -18,8 +18,11 @@
     <string name="setup_step_allow">When a notification asks about port 47821, tap Allow always. You can also turn it on in the Terminal app\'s settings, under Security.</string>
     <string name="setup_button">Copy command and open Terminal</string>
     <string name="setup_start_linux">Start Linux</string>
-    <string name="setup_already">Already set up? Linux probably isn\'t running. Start it and Airi will find it.</string>
     <string name="setup_failed">Couldn\'t prepare the helper: %1$s</string>
+
+    <string name="linux_off_title">Linux isn\'t running</string>
+    <string name="linux_off_body">Start it and your apps show up here. Opening one from your launcher starts it too.</string>
+    <string name="linux_off_set_up_again">Set up Airi in Linux again</string>
 
     <string name="apps_title">Apps in Linux</string>
     <string name="no_apps_title">No apps yet</string>

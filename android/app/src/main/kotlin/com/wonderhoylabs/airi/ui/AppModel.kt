@@ -29,7 +29,7 @@ data class LinuxApp(
     val adding: Boolean = false,
 )
 
-enum class Stage { CHECKING, NO_TERMINAL, SETUP, SETUP_AGAIN, UPDATING, READY }
+enum class Stage { CHECKING, NO_TERMINAL, SETUP, SETUP_AGAIN, LINUX_OFF, UPDATING, READY }
 
 data class UiState(val stage: Stage = Stage.CHECKING, val apps: List<LinuxApp> = emptyList())
 
@@ -52,7 +52,13 @@ class AppModel(private val context: Context) {
                 delay(RETRY_MS)
                 continue
             } catch (_: IOException) {
-                setStage(if (AgentSetup.terminalIntent(context) == null) Stage.NO_TERMINAL else Stage.SETUP)
+                setStage(
+                    when {
+                        AgentSetup.terminalIntent(context) == null -> Stage.NO_TERMINAL
+                        AgentSetup.connectedBefore(context) -> Stage.LINUX_OFF
+                        else -> Stage.SETUP
+                    },
+                )
                 delay(RETRY_MS)
                 continue
             }
