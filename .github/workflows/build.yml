@@ -1,0 +1,107 @@
+name: Build
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  pull_request:
+
+permissions:
+  contents: read
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  # The agent runs in Android's Linux terminal, so it's built on the same kind of machine.
+  agent:
+    runs-on: ubuntu-24.04-arm
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-unknown-linux-gnu
+          components: clippy, rustfmt
+      - name: Install the libraries the agent links to
+        run: sudo apt-get update && sudo apt-get install -y libpixman-1-dev libxkbcommon-dev pkg-config
+      - name: Check that the app and the agent have the same version
+        run: grep -qx "version = \"$(cat VERSION)\"" Cargo.toml
+      - run: cargo fmt --all --check
+      - run: cargo clippy --workspace --all-targets -- -D warnings
+      - run: cargo test --workspace
+      - name: Check that the license notices are current
+        run: |
+          python3 tools/third-party-licenses.py
+          git diff --exit-code -- android/app/src/main/assets/third-party-licenses.txt
+      - run: ./tools/build-agent.sh
+      - uses: actions/upload-artifact@v4
+        with:
+          name: airi-agent
+          path: dist/airi-agent
+
+  android:
+    needs: agent
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-linux-android
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+      - name: Install cargo-ndk
+        run: cargo install cargo-ndk --locked
+      - name: Install the Android platform and NDK
+        run: |
+          yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses > /dev/null
+          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "platforms;android-37.0" "ndk;30.0.16248370"
+      - uses: actions/download-artifact@v4
+        with:
+          name: airi-agent
+          path: dist
+      # To sign with your own key, add the repository secrets AIRI_KEYSTORE_BASE64,
+      # AIRI_KEYSTORE_PASSWORD, AIRI_KEY_ALIAS and AIRI_KEY_PASSWORD. Without them the APK uses a
+      # throwaway debug key, so each release has to be installed fresh instead of updating.
+      - name: Build
+        working-directory: android
+        env:
+          KEYSTORE_BASE64: ${{ secrets.AIRI_KEYSTORE_BASE64 }}
+          AIRI_KEYSTORE_PASSWORD: ${{ secrets.AIRI_KEYSTORE_PASSWORD }}
+          AIRI_KEY_ALIAS: ${{ secrets.AIRI_KEY_ALIAS }}
+          AIRI_KEY_PASSWORD: ${{ secrets.AIRI_KEY_PASSWORD }}
+        run: |
+          if [ -n "$KEYSTORE_BASE64" ]; then
+            echo "$KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/release.keystore"
+            export AIRI_KEYSTORE="$RUNNER_TEMP/release.keystore"
+          fi
+          ./gradlew :app:testDebugUnitTest :app:lintRelease :app:assembleRelease --no-daemon
+      - name: Rename the APK
+        run: cp android/app/build/outputs/apk/release/app-release.apk airi.apk
+      - uses: actions/upload-artifact@v4
+        with:
+          name: airi-apk
+          path: airi.apk
+
+  # Runs for a tag such as v0.1.0.
+  release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: android
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: airi-apk
+      - name: Publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+          REPOSITORY: ${{ github.repository }}
+        run: |
+          mv airi.apk "airi-$TAG.apk"
+          sha256sum -- *.apk > SHA256SUMS
+          gh release create "$TAG" --repo "$REPOSITORY" --title "Airi ${TAG#v}" --verify-tag --generate-notes \
+            -- *.apk SHA256SUMS

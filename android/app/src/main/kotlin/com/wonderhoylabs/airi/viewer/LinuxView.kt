@@ -91,7 +91,9 @@ class LinuxView(context: Context, private val input: Input) : SurfaceView(contex
         val code = event.scanCode.takeIf { it != 0 && event.device?.isVirtual == false }
             ?: KeyMap.fromKeyCode(event.keyCode)
         if (code != null) {
-            if (event.repeatCount == 0) input.key(code, pressed)
+            // Linux apps don't repeat keys here, so a held key has to come through as more presses.
+            if (event.repeatCount > 0) input.key(code, false)
+            input.key(code, pressed)
             return true
         }
         val character = event.unicodeChar

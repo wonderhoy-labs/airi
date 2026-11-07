@@ -799,7 +799,9 @@ impl Globals {
         let mut seat = seat_state.new_wl_seat(dh, "airi");
         seat.add_pointer();
         seat.add_touch();
-        seat.add_keyboard(XkbConfig::default(), 400, 30)
+        // Key repeat stays off here, and Android's is passed on instead. Apps time their own repeat, so one
+        // that's busy redrawing misses the key going up and types the letter over and over.
+        seat.add_keyboard(XkbConfig::default(), 0, 0)
             .map_err(|err| anyhow::anyhow!("couldn't set up the keyboard: {err:?}"))?;
         TextInputManagerState::new::<State>(dh);
         Ok(Self {
