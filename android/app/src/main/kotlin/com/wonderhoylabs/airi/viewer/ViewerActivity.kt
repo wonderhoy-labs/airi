@@ -465,12 +465,14 @@ class ViewerActivity : Activity(), SurfaceHolder.Callback, LinuxView.Input {
         val agent = connection
         if (isFinishing && agent != null) {
             // Closing the Android window closes the Linux one, the way an app's own close button would.
+            // The socket closing ends the session. Interrupting it here would close the socket straight
+            // away, because that's what interrupting a channel does, and this message would be lost.
             agent.send(Protocol.CLOSE)
             agent.finish()
         } else {
             agent?.close()
+            session?.interrupt()
         }
-        session?.interrupt()
         val handle = native
         // The session can be in the middle of a frame, so the native side has to outlive it.
         thread(name = "airi-cleanup") {

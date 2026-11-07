@@ -54,14 +54,14 @@ pub struct Outgoing {
 }
 
 impl Outgoing {
+    /// Queues a message, or drops it if the queue is full. Android freezes apps in the background, so a
+    /// connection can stop reading for a long time, and waiting here would hang every Linux app.
     pub fn send(&self, kind: u8, payload: Vec<u8>) {
-        // A full queue means the phone has stopped reading. Control messages are small and few, so
-        // block only until the writer thread sees the broken socket.
-        let _ = self.tx.send(Out::Message(kind, payload));
+        let _ = self.tx.try_send(Out::Message(kind, payload));
     }
 
     pub fn send_frame(&self, frame: Frame) {
-        let _ = self.tx.send(Out::Frame(frame));
+        let _ = self.tx.try_send(Out::Frame(frame));
     }
 }
 
@@ -109,7 +109,8 @@ fn serve(conn: ConnId, mut stream: TcpStream, token: Arc<Vec<u8>>, events: Sende
         warn!(%err, "refused a connection");
         return;
     }
-    let (tx, rx) = mpsc::sync_channel(64);
+    // Room for an icon for every app, which all get asked for at once.
+    let (tx, rx) = mpsc::sync_channel(1024);
     let Ok(write_half) = stream.try_clone() else { return };
     thread::Builder::new()
         .name("airi-send".into())
