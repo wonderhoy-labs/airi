@@ -288,17 +288,18 @@ impl State {
 
     fn resize_stage(&mut self, conn: ConnId, width: u32, height: u32, scale: f32) {
         let view = sanitize_size(width, height);
-        let scale = sanitize_scale(scale);
         let renderer = &mut self.renderer;
         let Some(stage) = self.stages.get_mut(&conn) else { return };
+        stage.base_scale = sanitize_scale(scale);
+        let scale = stage.scale_for(view);
         let target = stage.pending_resize.as_ref().map_or(stage.view, |pending| pending.view);
         if target == view && stage.scale == scale {
             return;
         }
+        stage.set_scale(scale);
         let window = stage.main.and_then(|id| self.windows.iter().find(|t| t.id == id));
-        // With a window to wait for, keep showing what's there until it has drawn the new size. A
-        // change of scale redraws everything anyway, and happens too rarely to be worth smoothing.
-        if let (Some(window), true) = (window, stage.scale == scale) {
+        // With a window to wait for, keep showing what's there until it has drawn the new size.
+        if let Some(window) = window {
             // A window being dragged asks again every frame, so this keeps the first deadline. Waiting
             // for the app to catch up with the very latest size would freeze the picture for the drag.
             let until = stage.pending_resize.as_ref().map_or(Instant::now() + RESIZE_PATIENCE, |p| p.until);
@@ -309,12 +310,6 @@ impl State {
         stage.pending_resize = None;
         if let Err(err) = stage.resize(renderer, view, scale) {
             error!(?err, "couldn't resize a window");
-            return;
-        }
-        stage.update_surface_scale();
-        let size = stage.view_logical_size();
-        if let Some(window) = window {
-            crate::windows::configure_window(&window.window, size, stage.focused);
         }
     }
 

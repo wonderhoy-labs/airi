@@ -10,7 +10,11 @@ use smithay::{
         wayland_server::{Resource, protocol::wl_surface::WlSurface},
     },
     utils::{Logical, Point, Rectangle, Size},
-    wayland::{compositor::with_states, seat::WaylandFocus, shell::xdg::XdgToplevelSurfaceData},
+    wayland::{
+        compositor::with_states,
+        seat::WaylandFocus,
+        shell::xdg::{SurfaceCachedState, XdgToplevelSurfaceData},
+    },
     xwayland::{X11Surface, xwm::WmWindowType},
 };
 
@@ -131,14 +135,24 @@ impl State {
         let Some(stage) = self.stages.get_mut(&conn) else { return };
         let size = window.geometry().size;
         if stage.main == Some(id) {
+            let view = stage.pending_resize.as_ref().map_or(stage.view, |pending| pending.view);
+            let wanted = stage.logical_size_of(view);
+            let answered = has_reached(window, wanted);
             // Until the app has caught up, this commit is still the old size, and using it would make
             // the picture jump back for a moment.
-            if let Some(pending) = &stage.pending_resize {
-                if !has_reached(window, stage.logical_size_of(pending.view)) {
+            if stage.pending_resize.is_some() && !answered {
+                return;
+            }
+            if answered && stage.learn_min_size(size, wanted) {
+                let scale = stage.scale_for(view);
+                if scale != stage.scale {
+                    stage.set_scale(scale);
+                    stage.hold_for(view);
+                    configure_window(window, stage.logical_size_of(view), stage.focused);
                     return;
                 }
-                stage.finish_resize(renderer);
             }
+            stage.finish_resize(renderer);
             if size.w > 0 && size.h > 0 {
                 stage.fit_to(renderer, size);
             }
@@ -309,6 +323,9 @@ impl State {
         if stage.desktop_id.is_empty() {
             stage.desktop_id = self.windows[index].desktop_id.clone();
         }
+        // Asking for the right size from the start saves the app laying everything out twice.
+        stage.min_size = declared_min_size(&window);
+        stage.set_scale(stage.scale_for(stage.view));
         configure_window(&window, stage.view_logical_size(), true);
         stage.map(window.clone(), (0, 0).into(), true);
         stage.update_surface_scale();
@@ -604,6 +621,16 @@ pub fn configure_window(window: &Window, size: Size<i32, Logical>, activated: bo
             let _ = surface.set_maximized(true);
             let _ = surface.configure(Rectangle::from_size(size));
         }
+    }
+}
+
+/// The smallest size a window says it can be, which not every app does.
+fn declared_min_size(window: &Window) -> Size<i32, Logical> {
+    match window.underlying_surface() {
+        WindowSurface::Wayland(toplevel) => with_states(toplevel.wl_surface(), |states| {
+            states.cached_state.get::<SurfaceCachedState>().current().min_size
+        }),
+        WindowSurface::X11(surface) => surface.min_size().unwrap_or_default(),
     }
 }
 

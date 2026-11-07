@@ -80,8 +80,8 @@ search and app list like any other. Tapping one starts Linux if it isn't running
 | Show the keyboard | It opens when a text field asks for it, or tap the round button on the right edge |
 | Paste into Linux | Copy on Android, then go to the Linux app |
 
-If an app won't shrink to fit, Airi scales it down so that all of it stays on screen. If you install something new in Linux, it
-shows up the next time you open Airi.
+Some apps won't go as small as a phone, like Chromium, which needs 500 logical pixels of width. Airi zooms those out just enough to
+fit, so they still fill the window. If you install something new in Linux, it shows up the next time you open Airi.
 
 ### From the terminal
 
@@ -129,7 +129,8 @@ Android's Terminal app has no way to give a Linux window its own Android window,
 using the Terminal's. The agent is built with [Smithay](https://github.com/Smithay/smithay) and runs as a user service in Linux.
 
 It gives every Android window a private screen of exactly that window's size, and the Linux app there fills it. Apps are told
-they're maximized and tiled, so they drop their shadows and rounded corners. Dialogs stay on their parent's screen. A window
+they're maximized and tiled, so they drop their shadows and rounded corners. An app with a minimum size that doesn't fit gets told
+the screen has a lower density, which gives it the room it needs while it still draws pixel for pixel. Dialogs stay on their parent's screen. A window
 nobody asked for, like a second window from the same app, makes Android open a new one for it.
 
 Drawing happens in software with Pixman. Only the parts of a window that changed go out, as LZ4-compressed rectangles of raw

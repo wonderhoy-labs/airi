@@ -75,8 +75,9 @@ Each rectangle is a `u32` x, y, width, height and compressed size, then that man
 holding its RGBA pixels. A frame after a size change covers the whole picture.
 
 The app sends `FRAME_ACK` for each frame it has drawn, and the agent keeps at most two frames in flight, so
-a slow link costs frame rate and not latency. The picture is the size the app asked for, unless a Linux
-window won't shrink that far. Then it's the window's size, and the app scales it down to fit.
+a slow link costs frame rate and not latency. The picture is the size the app asked for. A Linux window
+with a minimum size that won't fit gets a lower scale, down to 1. Only one that still doesn't fit makes the
+picture larger, and then the app scales it down.
 
 After `RESIZE`, the agent keeps the old picture until the window has drawn the new size, or 600 ms have
 passed, so that nothing half-finished reaches the screen.
