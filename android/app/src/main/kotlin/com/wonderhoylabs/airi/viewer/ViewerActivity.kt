@@ -237,9 +237,7 @@ class ViewerActivity : Activity(), SurfaceHolder.Callback, LinuxView.Input {
         val terminal = AgentSetup.terminalIntent(this) ?: return
         startActivity(terminal)
         linuxView.postDelayed({
-            startActivity(
-                Intent(intent).addFlags(Intent.FLAG_ACTIVITY_NEW_DOCUMENT or Intent.FLAG_ACTIVITY_REORDER_TO_FRONT),
-            )
+            getSystemService(ActivityManager::class.java).moveTaskToFront(taskId, 0)
         }, TERMINAL_HEAD_START_MS)
     }
 
