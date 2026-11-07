@@ -144,7 +144,7 @@ class AgentConnection private constructor(
         }
 
         /** Connects and proves to each other that both ends hold the token, without sending it. */
-        fun connect(address: InetSocketAddress, token: ByteArray, role: Int): AgentConnection {
+        fun connect(address: InetSocketAddress, token: ByteArray): AgentConnection {
             val channel = SocketChannel.open()
             try {
                 val socket = channel.socket()
@@ -160,7 +160,7 @@ class AgentConnection private constructor(
                 val serverNonce = hello.copyOfRange(6, 38)
                 val clientNonce = ByteArray(32).also(SecureRandom()::nextBytes)
 
-                val reply = clientNonce + proof(token, "airi client", serverNonce, clientNonce) + role.toByte()
+                val reply = clientNonce + proof(token, "airi client", serverNonce, clientNonce)
                 channel.write(ByteBuffer.wrap(reply))
                 val answer = ByteArray(32)
                 try {

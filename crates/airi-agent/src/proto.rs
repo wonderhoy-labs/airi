@@ -8,9 +8,6 @@ use sha2::Sha256;
 pub const PROTOCOL_VERSION: u16 = 1;
 pub const DEFAULT_PORT: u16 = 47821;
 
-pub const ROLE_CONTROL: u8 = 1;
-pub const ROLE_WINDOW: u8 = 2;
-
 /// No ordinary message comes close to this. Only an agent upgrade does.
 pub const MAX_MESSAGE: usize = 128 * 1024 * 1024;
 
@@ -56,7 +53,6 @@ pub const POINTER_MOTION: u8 = 0;
 pub const POINTER_BUTTON_DOWN: u8 = 1;
 pub const POINTER_BUTTON_UP: u8 = 2;
 pub const POINTER_SCROLL: u8 = 3;
-pub const POINTER_LEAVE: u8 = 4;
 
 pub const TOUCH_DOWN: u8 = 0;
 pub const TOUCH_MOVE: u8 = 1;
@@ -209,14 +205,14 @@ fn proof(token: &[u8], label: &[u8], server_nonce: &[u8; 32], client_nonce: &[u8
 
 /// Runs the agent's side of the handshake. Each side proves it knows the token without sending it,
 /// because any Android app can connect to a forwarded port, or listen on one while the agent is down.
-pub fn server_handshake(stream: &mut (impl Read + Write), token: &[u8]) -> io::Result<u8> {
+pub fn server_handshake(stream: &mut (impl Read + Write), token: &[u8]) -> io::Result<()> {
     let server_nonce: [u8; 32] = rand::random();
     stream.write_all(b"AIRI")?;
     stream.write_all(&PROTOCOL_VERSION.to_le_bytes())?;
     stream.write_all(&server_nonce)?;
     stream.flush()?;
 
-    let mut reply = [0u8; 65];
+    let mut reply = [0u8; 64];
     stream.read_exact(&mut reply)?;
     let client_nonce: [u8; 32] = reply[..32].try_into().unwrap();
     let expected = proof(token, b"airi client", &server_nonce, &client_nonce);
@@ -227,10 +223,8 @@ pub fn server_handshake(stream: &mut (impl Read + Write), token: &[u8]) -> io::R
     if difference != 0 {
         return Err(io::Error::new(io::ErrorKind::PermissionDenied, "wrong token"));
     }
-    let role = reply[64];
     stream.write_all(&proof(token, b"airi server", &server_nonce, &client_nonce))?;
-    stream.flush()?;
-    Ok(role)
+    stream.flush()
 }
 
 #[cfg(test)]
@@ -286,7 +280,7 @@ mod tests {
                 Ok(())
             }
         }
-        let mut pipe = Pipe { input: IoCursor::new(vec![0u8; 65]), output: Vec::new() };
+        let mut pipe = Pipe { input: IoCursor::new(vec![0u8; 64]), output: Vec::new() };
         let err = server_handshake(&mut pipe, b"secret").unwrap_err();
         assert_eq!(err.kind(), io::ErrorKind::PermissionDenied);
         assert_eq!(&pipe.output[..4], b"AIRI");

@@ -82,8 +82,7 @@ impl Canvas {
         let row = width as usize * BYTES_PER_PIXEL;
         let size = row * height as usize;
         self.scratch.resize(size, 0);
-        let written =
-            lz4_flex::block::decompress_into(data, &mut self.scratch).map_err(|_| FrameError::Corrupt)?;
+        let written = lz4_flex::block::decompress_into(data, &mut self.scratch).map_err(|_| FrameError::Corrupt)?;
         if written != size {
             return Err(FrameError::Corrupt);
         }

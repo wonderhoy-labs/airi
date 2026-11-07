@@ -1,10 +1,6 @@
 //! The functions `NativeView.kt` calls.
 
-use std::{
-    ffi::c_void,
-    ptr,
-    sync::Mutex,
-};
+use std::{ffi::c_void, ptr, sync::Mutex};
 
 use jni::{
     JNIEnv,
@@ -83,14 +79,8 @@ impl Viewer {
             }
             self.window_size = (width, height);
         }
-        let mut buffer = WindowBuffer {
-            width: 0,
-            height: 0,
-            stride: 0,
-            format: 0,
-            bits: ptr::null_mut(),
-            reserved: [0; 6],
-        };
+        let mut buffer =
+            WindowBuffer { width: 0, height: 0, stride: 0, format: 0, bits: ptr::null_mut(), reserved: [0; 6] };
         if unsafe { ANativeWindow_lock(self.window, &mut buffer, ptr::null_mut()) } != 0 {
             return;
         }
@@ -103,11 +93,7 @@ impl Viewer {
             let source = &pixels[y * source_stride..y * source_stride + row];
             // Safety: Android gives us `height` rows of `stride` pixels, and this stays within both.
             unsafe {
-                ptr::copy_nonoverlapping(
-                    source.as_ptr(),
-                    (buffer.bits as *mut u8).add(y * target_stride),
-                    row,
-                );
+                ptr::copy_nonoverlapping(source.as_ptr(), (buffer.bits as *mut u8).add(y * target_stride), row);
             }
         }
         unsafe { ANativeWindow_unlockAndPost(self.window) };
@@ -127,17 +113,17 @@ fn viewer(handle: jlong) -> &'static Mutex<Viewer> {
 
 #[unsafe(no_mangle)]
 pub extern "system" fn Java_com_wonderhoylabs_airi_viewer_NativeView_create(_env: JNIEnv, _class: JClass) -> jlong {
-    let viewer = Viewer {
-        canvas: Canvas::default(),
-        screen: Screen::default(),
-        window: ptr::null_mut(),
-        window_size: (0, 0),
-    };
+    let viewer =
+        Viewer { canvas: Canvas::default(), screen: Screen::default(), window: ptr::null_mut(), window_size: (0, 0) };
     Box::into_raw(Box::new(Mutex::new(viewer))) as jlong
 }
 
 #[unsafe(no_mangle)]
-pub extern "system" fn Java_com_wonderhoylabs_airi_viewer_NativeView_destroy(_env: JNIEnv, _class: JClass, handle: jlong) {
+pub extern "system" fn Java_com_wonderhoylabs_airi_viewer_NativeView_destroy(
+    _env: JNIEnv,
+    _class: JClass,
+    handle: jlong,
+) {
     // Safety: see `viewer`. This is the last use of the handle.
     drop(unsafe { Box::from_raw(handle as *mut Mutex<Viewer>) });
 }

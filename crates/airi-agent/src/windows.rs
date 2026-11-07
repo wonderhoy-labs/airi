@@ -3,18 +3,14 @@
 use std::time::Instant;
 
 use smithay::{
-    desktop::{PopupManager, Window, WindowSurface},
+    desktop::{Window, WindowSurface},
     input::pointer::{CursorImageStatus, CursorImageSurfaceData},
     reexports::{
         wayland_protocols::xdg::shell::server::xdg_toplevel,
         wayland_server::{Resource, protocol::wl_surface::WlSurface},
     },
     utils::{Logical, Point, Rectangle, Size},
-    wayland::{
-        compositor::with_states,
-        seat::WaylandFocus,
-        shell::xdg::XdgToplevelSurfaceData,
-    },
+    wayland::{compositor::with_states, seat::WaylandFocus, shell::xdg::XdgToplevelSurfaceData},
     xwayland::{X11Surface, xwm::WmWindowType},
 };
 
@@ -225,8 +221,7 @@ impl State {
             .or_else(|| self.stages.values().max_by_key(|stage| stage.focused));
         if let Some(stage) = target {
             tracked.announced = true;
-            let payload =
-                Payload::default().u32(tracked.id).string(&tracked.desktop_id).string(&tracked.last_title);
+            let payload = Payload::default().u32(tracked.id).string(&tracked.desktop_id).string(&tracked.last_title);
             stage.out.send(to_android::NEW_WINDOW, payload.0);
         }
     }
@@ -251,18 +246,14 @@ impl State {
 
     fn find_waiting_stage(&self, window: &Window, desktop_id: &str) -> Option<ConnId> {
         let waiting = || self.stages.values().filter(|stage| stage.waiting.is_some() && stage.main.is_none());
-        if !desktop_id.is_empty() {
-            if let Some(stage) = waiting().find(|stage| stage.desktop_id == desktop_id) {
-                return Some(stage.conn);
-            }
+        if !desktop_id.is_empty()
+            && let Some(stage) = waiting().find(|stage| stage.desktop_id == desktop_id)
+        {
+            return Some(stage.conn);
         }
         if let Some(pid) = self.window_pid(window) {
             let found = waiting().find(|stage| {
-                stage
-                    .waiting
-                    .as_ref()
-                    .and_then(|w| w.launched_pid)
-                    .is_some_and(|launched| descends_from(pid, launched))
+                stage.waiting.as_ref().and_then(|w| w.launched_pid).is_some_and(|launched| descends_from(pid, launched))
             });
             if let Some(stage) = found {
                 return Some(stage.conn);
@@ -289,14 +280,11 @@ impl State {
                     surface.window_type(),
                     Some(WmWindowType::Dialog | WmWindowType::Utility | WmWindowType::Splash)
                 );
-                if let Some(parent) = surface.is_transient_for() {
-                    if let Some(tracked) = self
-                        .windows
-                        .iter()
-                        .find(|t| t.window.x11_surface().is_some_and(|s| s.window_id() == parent))
-                    {
-                        return tracked.stage;
-                    }
+                if let Some(parent) = surface.is_transient_for()
+                    && let Some(tracked) =
+                        self.windows.iter().find(|t| t.window.x11_surface().is_some_and(|s| s.window_id() == parent))
+                {
+                    return tracked.stage;
                 }
                 if is_dialog {
                     return self
@@ -385,15 +373,15 @@ impl State {
         let window = tracked.window.clone();
         let focus = self.keyboard_focus_for_window(&window);
         window.set_activated(true);
-        if let Some(toplevel) = window.toplevel() {
-            if toplevel.is_initial_configure_sent() {
-                toplevel.send_pending_configure();
-            }
+        if let Some(toplevel) = window.toplevel()
+            && toplevel.is_initial_configure_sent()
+        {
+            toplevel.send_pending_configure();
         }
-        if let Some(surface) = window.x11_surface() {
-            if let Some(xwm) = self.xwm.as_mut() {
-                let _ = xwm.raise_window(surface);
-            }
+        if let Some(surface) = window.x11_surface()
+            && let Some(xwm) = self.xwm.as_mut()
+        {
+            let _ = xwm.raise_window(surface);
         }
         if let Some(keyboard) = self.seat.get_keyboard() {
             keyboard.set_focus(self, Some(focus), next_serial());
@@ -408,21 +396,19 @@ impl State {
         for tracked in self.windows.iter().filter(|t| ids.contains(&t.id)) {
             let window = tracked.window.clone();
             window.set_activated(false);
-            if let Some(toplevel) = window.toplevel() {
-                if toplevel.is_initial_configure_sent() {
-                    toplevel.send_pending_configure();
-                }
+            if let Some(toplevel) = window.toplevel()
+                && toplevel.is_initial_configure_sent()
+            {
+                toplevel.send_pending_configure();
             }
-            if let (Some(focus), Some(surface)) = (&current, window.wl_surface()) {
-                if focus.wl_surface().as_deref() == Some(&*surface) {
-                    had_focus = true;
-                }
+            if let (Some(focus), Some(surface)) = (&current, window.wl_surface())
+                && focus.wl_surface().as_deref() == Some(&*surface)
+            {
+                had_focus = true;
             }
         }
-        if had_focus {
-            if let Some(keyboard) = self.seat.get_keyboard() {
-                keyboard.set_focus(self, None, next_serial());
-            }
+        if had_focus && let Some(keyboard) = self.seat.get_keyboard() {
+            keyboard.set_focus(self, None, next_serial());
         }
     }
 
@@ -456,11 +442,8 @@ impl State {
             stage.children.remove(0);
             self.attach_main(conn, promoted);
         } else {
-            stage.waiting = Some(Waiting {
-                until: Instant::now() + REPLACEMENT_GRACE,
-                launched_pid: None,
-                since_launch: false,
-            });
+            stage.waiting =
+                Some(Waiting { until: Instant::now() + REPLACEMENT_GRACE, launched_pid: None, since_launch: false });
         }
     }
 
@@ -473,10 +456,7 @@ impl State {
                 continue;
             }
             if waiting.since_launch {
-                let message = format!(
-                    "The app didn't open a window within {} seconds.",
-                    LAUNCH_TIMEOUT.as_secs()
-                );
+                let message = format!("The app didn't open a window within {} seconds.", LAUNCH_TIMEOUT.as_secs());
                 stage.out.send(to_android::ERROR, Payload::default().string(&message).0);
             } else {
                 stage.out.send(to_android::CLOSED, Vec::new());
@@ -494,10 +474,10 @@ impl State {
         self.windows[index].last_title = title.clone();
         let id = self.windows[index].id;
         let Some(conn) = self.windows[index].stage else { return };
-        if let Some(stage) = self.stages.get(&conn) {
-            if stage.main == Some(id) {
-                stage.out.send(to_android::TITLE, Payload::default().string(&title).0);
-            }
+        if let Some(stage) = self.stages.get(&conn)
+            && stage.main == Some(id)
+        {
+            stage.out.send(to_android::TITLE, Payload::default().string(&title).0);
         }
     }
 
@@ -559,11 +539,11 @@ impl State {
     pub fn x11_configure_request(&mut self, surface: &X11Surface, width: Option<u32>, height: Option<u32>) {
         let tracked = self.windows.iter().find(|t| t.window.x11_surface() == Some(surface));
         let stage = tracked.and_then(|t| t.stage.and_then(|conn| self.stages.get(&conn)).map(|s| (t.id, s)));
-        if let Some((id, stage)) = stage {
-            if stage.main == Some(id) {
-                let _ = surface.configure(Rectangle::from_size(stage.view_logical_size()));
-                return;
-            }
+        if let Some((id, stage)) = stage
+            && stage.main == Some(id)
+        {
+            let _ = surface.configure(Rectangle::from_size(stage.view_logical_size()));
+            return;
         }
         let mut geometry = surface.geometry();
         if let Some(width) = width {
@@ -593,12 +573,6 @@ impl State {
         if matches!(&self.cursor, CursorImageStatus::Surface(cursor) if cursor == surface) {
             self.send_cursor();
         }
-    }
-
-    /// Clears out popups whose clients are gone.
-    pub fn cleanup_popups(&mut self) {
-        self.popups.cleanup();
-        let _ = PopupManager::popups_for_surface;
     }
 }
 
@@ -687,7 +661,7 @@ fn cursor_image(surface: &WlSurface) -> Option<Payload> {
             let mut rgba = Vec::with_capacity((data.width * data.height * 4) as usize);
             for y in 0..data.height as usize {
                 let start = data.offset as usize + y * data.stride as usize;
-                for pixel in source[start..start + data.width as usize * 4].chunks_exact(4) {
+                for pixel in source[start..start + data.width as usize * 4].as_chunks::<4>().0 {
                     rgba.extend_from_slice(&[pixel[2], pixel[1], pixel[0], pixel[3]]);
                 }
             }

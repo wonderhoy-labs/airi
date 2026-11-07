@@ -51,8 +51,8 @@ object AgentSetup {
 
     fun token(context: Context): ByteArray = hexToken(context).hexToByteArray()
 
-    fun connect(context: Context, role: Int): AgentConnection =
-        AgentConnection.connect(address(context), token(context), role).also {
+    fun connect(context: Context): AgentConnection =
+        AgentConnection.connect(address(context), token(context)).also {
             context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().putBoolean(CONNECTED_BEFORE, true).apply()
         }
 

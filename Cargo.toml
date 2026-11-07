@@ -8,6 +8,7 @@ edition = "2024"
 license = "Apache-2.0"
 repository = "https://github.com/wonderhoy-labs/airi"
 publish = false
+rust-version = "1.88"
 
 [profile.release]
 codegen-units = 1

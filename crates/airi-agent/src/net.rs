@@ -21,7 +21,7 @@ pub type ConnId = u64;
 
 /// What the network threads tell the compositor.
 pub enum NetEvent {
-    Connected { conn: ConnId, role: u8, out: Outgoing },
+    Connected { conn: ConnId, out: Outgoing },
     Message { conn: ConnId, message: Incoming },
     Disconnected { conn: ConnId },
 }
@@ -66,11 +66,7 @@ impl Outgoing {
 }
 
 fn encode_frame(frame: &Frame, compressed: &mut Vec<u8>) {
-    let mut header = Payload::default()
-        .u32(frame.seq)
-        .u32(frame.width)
-        .u32(frame.height)
-        .u32(frame.rects.len() as u32);
+    let mut header = Payload::default().u32(frame.seq).u32(frame.width).u32(frame.height).u32(frame.rects.len() as u32);
     compressed.clear();
     compressed.append(&mut header.0);
     for rect in &frame.rects {
@@ -109,13 +105,10 @@ fn writer_thread(stream: TcpStream, rx: Receiver<Out>) {
 
 fn serve(conn: ConnId, mut stream: TcpStream, token: Arc<Vec<u8>>, events: Sender<NetEvent>) {
     let _ = stream.set_nodelay(true);
-    let role = match server_handshake(&mut stream, &token) {
-        Ok(role) => role,
-        Err(err) => {
-            warn!(%err, "refused a connection");
-            return;
-        }
-    };
+    if let Err(err) = server_handshake(&mut stream, &token) {
+        warn!(%err, "refused a connection");
+        return;
+    }
     let (tx, rx) = mpsc::sync_channel(64);
     let Ok(write_half) = stream.try_clone() else { return };
     thread::Builder::new()
@@ -123,7 +116,7 @@ fn serve(conn: ConnId, mut stream: TcpStream, token: Arc<Vec<u8>>, events: Sende
         .spawn(move || writer_thread(write_half, rx))
         .expect("thread creation");
 
-    if events.send(NetEvent::Connected { conn, role, out: Outgoing { tx } }).is_err() {
+    if events.send(NetEvent::Connected { conn, out: Outgoing { tx } }).is_err() {
         return;
     }
     let mut reader = BufReader::with_capacity(64 * 1024, &stream);
@@ -157,11 +150,8 @@ pub fn listen(port: u16, token: Vec<u8>, events: Sender<NetEvent>) -> std::io::R
             let token = token.clone();
             let events = events.clone();
             let conn = NEXT.fetch_add(1, Ordering::Relaxed);
-            let _ = thread::Builder::new()
-                .name("airi-recv".into())
-                .spawn(move || serve(conn, stream, token, events));
+            let _ = thread::Builder::new().name("airi-recv".into()).spawn(move || serve(conn, stream, token, events));
         }
     })?;
     Ok(())
 }
-

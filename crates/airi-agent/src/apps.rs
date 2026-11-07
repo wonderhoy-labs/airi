@@ -58,8 +58,7 @@ fn on_path(program: &str) -> bool {
     if program.contains('/') {
         return Path::new(program).exists();
     }
-    env::var_os("PATH")
-        .is_some_and(|path| env::split_paths(&path).any(|dir| dir.join(program).exists()))
+    env::var_os("PATH").is_some_and(|path| env::split_paths(&path).any(|dir| dir.join(program).exists()))
 }
 
 /// Reads the `[Desktop Entry]` group of a desktop file.
@@ -70,10 +69,11 @@ fn parse_entry(text: &str) -> HashMap<&str, &str> {
         let line = line.trim();
         if line.starts_with('[') {
             in_entry = line == "[Desktop Entry]";
-        } else if in_entry && !line.starts_with('#') {
-            if let Some((key, value)) = line.split_once('=') {
-                fields.entry(key.trim()).or_insert(value.trim());
-            }
+        } else if in_entry
+            && !line.starts_with('#')
+            && let Some((key, value)) = line.split_once('=')
+        {
+            fields.entry(key.trim()).or_insert(value.trim());
         }
     }
     fields
@@ -115,10 +115,10 @@ fn parse_app(id: String, text: &str) -> Option<App> {
     {
         return None;
     }
-    if let Some(program) = fields.get("TryExec") {
-        if !on_path(&unescape(program)) {
-            return None;
-        }
+    if let Some(program) = fields.get("TryExec")
+        && !on_path(&unescape(program))
+    {
+        return None;
     }
     let exec = unescape(fields.get("Exec")?);
     let name = unescape(fields.get("Name")?);
@@ -238,9 +238,8 @@ pub fn find_for_window<'a>(apps: &'a [App], window_id: &str) -> Option<&'a App> 
         .or_else(|| apps.iter().find(by_last_part))
 }
 
-const SIZES: &[&str] = &[
-    "scalable", "512x512", "384x384", "256x256", "192x192", "128x128", "96x96", "72x72", "64x64", "48x48",
-];
+const SIZES: &[&str] =
+    &["scalable", "512x512", "384x384", "256x256", "192x192", "128x128", "96x96", "72x72", "64x64", "48x48"];
 
 /// Looks an icon name up in the icon themes, largest first.
 fn find_icon_file(name: &str) -> Option<PathBuf> {
@@ -361,7 +360,8 @@ mod tests {
 
     #[test]
     fn only_the_main_group_counts() {
-        let text = "[Desktop Entry]\nType=Application\nName=Real\nExec=real\n[Desktop Action new]\nName=Other\nExec=other\n";
+        let text =
+            "[Desktop Entry]\nType=Application\nName=Real\nExec=real\n[Desktop Action new]\nName=Other\nExec=other\n";
         let app = parse_app("a.desktop".into(), text).unwrap();
         assert_eq!(app.name, "Real");
         assert_eq!(app.exec, "real");

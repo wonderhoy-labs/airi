@@ -5,9 +5,6 @@ object Protocol {
     const val VERSION = 1
     const val PORT = 47821
 
-    const val ROLE_CONTROL = 1
-    const val ROLE_WINDOW = 2
-
     const val LIST_APPS = 1
     const val GET_ICON = 2
     const val LIST_WINDOWS = 3

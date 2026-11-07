@@ -12,12 +12,11 @@ use std::{
 
 use smithay::{
     backend::renderer::{pixman::PixmanRenderer, utils::on_commit_buffer_handler},
-    delegate_compositor, delegate_data_device, delegate_fractional_scale, delegate_output,
-    delegate_primary_selection, delegate_seat, delegate_shm, delegate_single_pixel_buffer,
-    delegate_text_input_manager, delegate_viewporter, delegate_xdg_decoration, delegate_xdg_shell,
-    delegate_xwayland_shell,
+    delegate_compositor, delegate_data_device, delegate_fractional_scale, delegate_output, delegate_primary_selection,
+    delegate_seat, delegate_shm, delegate_single_pixel_buffer, delegate_text_input_manager, delegate_viewporter,
+    delegate_xdg_decoration, delegate_xdg_shell, delegate_xwayland_shell,
     desktop::{
-        PopupKind, PopupKeyboardGrab, PopupManager, PopupPointerGrab, PopupUngrabStrategy, Window,
+        PopupKeyboardGrab, PopupKind, PopupManager, PopupPointerGrab, PopupUngrabStrategy, Window,
         find_popup_root_surface, get_popup_toplevel_coords,
     },
     input::{
@@ -29,8 +28,7 @@ use smithay::{
     reexports::{
         calloop::{LoopHandle, channel::Sender},
         wayland_protocols::xdg::{
-            decoration::zv1::server::zxdg_toplevel_decoration_v1::Mode as DecorationMode,
-            shell::server::xdg_toplevel,
+            decoration::zv1::server::zxdg_toplevel_decoration_v1::Mode as DecorationMode, shell::server::xdg_toplevel,
         },
         wayland_server::{
             Client, DisplayHandle, Resource,
@@ -42,8 +40,7 @@ use smithay::{
     wayland::{
         buffer::BufferHandler,
         compositor::{
-            CompositorClientState, CompositorHandler, CompositorState, get_parent, is_sync_subsurface,
-            with_states,
+            CompositorClientState, CompositorHandler, CompositorState, get_parent, is_sync_subsurface, with_states,
         },
         fractional_scale::{FractionalScaleHandler, FractionalScaleManagerState, with_fractional_scale},
         output::{OutputHandler, OutputManagerState},
@@ -234,7 +231,6 @@ pub struct State {
     pub android_clipboard: Option<String>,
     pub linux_clipboard: Option<String>,
     pub cursor: CursorImageStatus,
-    pub started_at: Instant,
 }
 
 impl State {
@@ -248,10 +244,10 @@ impl State {
         while let Some(parent) = get_parent(&root) {
             root = parent;
         }
-        if let Some(popup) = self.popups.find_popup(&root) {
-            if let Ok(toplevel) = find_popup_root_surface(&popup) {
-                return toplevel;
-            }
+        if let Some(popup) = self.popups.find_popup(&root)
+            && let Ok(toplevel) = find_popup_root_surface(&popup)
+        {
+            return toplevel;
         }
         root
     }
@@ -294,10 +290,10 @@ impl State {
             use std::io::Read;
             let mut text = Vec::new();
             let mut file = std::fs::File::from(read_end);
-            if file.by_ref().take(8 * 1024 * 1024).read_to_end(&mut text).is_ok() {
-                if let Ok(text) = String::from_utf8(text) {
-                    let _ = events.send(Event::LinuxClipboard(text));
-                }
+            if file.by_ref().take(8 * 1024 * 1024).read_to_end(&mut text).is_ok()
+                && let Ok(text) = String::from_utf8(text)
+            {
+                let _ = events.send(Event::LinuxClipboard(text));
             }
         });
     }
@@ -309,16 +305,11 @@ impl State {
         self.android_clipboard = Some(text.clone());
         let mime_types: Vec<String> =
             ["text/plain;charset=utf-8", "UTF8_STRING", "text/plain", "STRING", "TEXT"].map(String::from).into();
-        set_data_device_selection(
-            &self.dh,
-            &self.seat,
-            mime_types.clone(),
-            ClipboardOwner::Android(Arc::new(text)),
-        );
-        if let Some(xwm) = self.xwm.as_mut() {
-            if let Err(err) = xwm.new_selection(SelectionTarget::Clipboard, Some(mime_types)) {
-                warn!(?err, "couldn't offer the clipboard to X11");
-            }
+        set_data_device_selection(&self.dh, &self.seat, mime_types.clone(), ClipboardOwner::Android(Arc::new(text)));
+        if let Some(xwm) = self.xwm.as_mut()
+            && let Err(err) = xwm.new_selection(SelectionTarget::Clipboard, Some(mime_types))
+        {
+            warn!(?err, "couldn't offer the clipboard to X11");
         }
     }
 
@@ -382,10 +373,10 @@ impl CompositorHandler for State {
             self.toplevel_committed(&root);
         }
 
-        if let Some(PopupKind::Xdg(popup)) = self.popups.find_popup(surface) {
-            if !popup.is_initial_configure_sent() {
-                let _ = popup.send_configure();
-            }
+        if let Some(PopupKind::Xdg(popup)) = self.popups.find_popup(surface)
+            && !popup.is_initial_configure_sent()
+        {
+            let _ = popup.send_configure();
         }
 
         self.mark_dirty(surface);
@@ -415,9 +406,8 @@ impl SeatHandler for State {
     }
 
     fn focus_changed(&mut self, seat: &Seat<Self>, focused: Option<&KeyboardFocus>) {
-        let client = focused
-            .and_then(WaylandFocus::wl_surface)
-            .and_then(|surface| self.dh.get_client(surface.id()).ok());
+        let client =
+            focused.and_then(WaylandFocus::wl_surface).and_then(|surface| self.dh.get_client(surface.id()).ok());
         set_data_device_focus(&self.dh, seat, client.clone());
         set_primary_focus(&self.dh, seat, client);
     }
@@ -434,10 +424,10 @@ impl SelectionHandler for State {
 
     fn new_selection(&mut self, target: SelectionTarget, source: Option<SelectionSource>, seat: Seat<Self>) {
         let mime_types = source.as_ref().map(|source| source.mime_types());
-        if let Some(xwm) = self.xwm.as_mut() {
-            if let Err(err) = xwm.new_selection(target, mime_types.clone()) {
-                warn!(?err, "couldn't pass the selection on to X11");
-            }
+        if let Some(xwm) = self.xwm.as_mut()
+            && let Err(err) = xwm.new_selection(target, mime_types.clone())
+        {
+            warn!(?err, "couldn't pass the selection on to X11");
         }
         if target != SelectionTarget::Clipboard {
             return;
@@ -468,10 +458,10 @@ impl SelectionHandler for State {
                 });
             }
             ClipboardOwner::X11 => {
-                if let Some(xwm) = self.xwm.as_mut() {
-                    if let Err(err) = xwm.send_selection(target, mime_type, fd, self.handle.clone()) {
-                        warn!(?err, "couldn't read the selection from X11");
-                    }
+                if let Some(xwm) = self.xwm.as_mut()
+                    && let Err(err) = xwm.send_selection(target, mime_type, fd, self.handle.clone())
+                {
+                    warn!(?err, "couldn't read the selection from X11");
                 }
             }
         }
@@ -718,10 +708,10 @@ impl XwmHandler for State {
     }
 
     fn property_notify(&mut self, _xwm: XwmId, surface: X11Surface, property: WmWindowProperty) {
-        if matches!(property, WmWindowProperty::Title) {
-            if let Some(surface) = surface.wl_surface() {
-                self.title_changed_for(&surface);
-            }
+        if matches!(property, WmWindowProperty::Title)
+            && let Some(surface) = surface.wl_surface()
+        {
+            self.title_changed_for(&surface);
         }
     }
 
@@ -742,8 +732,9 @@ impl XwmHandler for State {
 
     fn send_selection(&mut self, _xwm: XwmId, selection: SelectionTarget, mime_type: String, fd: OwnedFd) {
         let result = match selection {
-            SelectionTarget::Clipboard => request_data_device_client_selection(&self.seat, mime_type, fd)
-                .map_err(|err| err.to_string()),
+            SelectionTarget::Clipboard => {
+                request_data_device_client_selection(&self.seat, mime_type, fd).map_err(|err| err.to_string())
+            }
             SelectionTarget::Primary => {
                 request_primary_client_selection(&self.seat, mime_type, fd).map_err(|err| err.to_string())
             }
@@ -759,20 +750,13 @@ impl XwmHandler for State {
                 let text_mime = Self::clipboard_text_mime(&mime_types);
                 set_data_device_selection(&self.dh, &self.seat, mime_types, ClipboardOwner::X11);
                 // Read it now, because Android can't ask later if the window isn't around.
-                if let (Some(mime), Some(xwm), Ok((read_end, write_end))) =
-                    (text_mime, self.xwm.as_mut(), pipe())
+                if let (Some(mime), Some(xwm), Ok((read_end, write_end))) = (text_mime, self.xwm.as_mut(), pipe())
+                    && xwm.send_selection(SelectionTarget::Clipboard, mime, write_end, self.handle.clone()).is_ok()
                 {
-                    if xwm
-                        .send_selection(SelectionTarget::Clipboard, mime, write_end, self.handle.clone())
-                        .is_ok()
-                    {
-                        self.read_clipboard_pipe(read_end);
-                    }
+                    self.read_clipboard_pipe(read_end);
                 }
             }
-            SelectionTarget::Primary => {
-                set_primary_selection(&self.dh, &self.seat, mime_types, ClipboardOwner::X11)
-            }
+            SelectionTarget::Primary => set_primary_selection(&self.dh, &self.seat, mime_types, ClipboardOwner::X11),
         }
     }
 

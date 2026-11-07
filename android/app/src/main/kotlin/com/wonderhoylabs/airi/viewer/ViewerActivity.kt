@@ -203,7 +203,7 @@ class ViewerActivity : Activity(), SurfaceHolder.Callback, LinuxView.Input {
         val deadline = System.currentTimeMillis() + LINUX_START_TIMEOUT_MS
         while (!closing) {
             try {
-                return AgentSetup.connect(this, Protocol.ROLE_WINDOW)
+                return AgentSetup.connect(this)
             } catch (_: WrongTokenException) {
                 showStatus(getString(R.string.viewer_wrong_token), working = false)
                 return null

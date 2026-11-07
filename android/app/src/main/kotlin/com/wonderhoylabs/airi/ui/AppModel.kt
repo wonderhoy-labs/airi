@@ -46,7 +46,7 @@ class AppModel(private val context: Context) {
     suspend fun run() {
         while (true) {
             val agent = try {
-                AgentSetup.connect(context, Protocol.ROLE_CONTROL)
+                AgentSetup.connect(context)
             } catch (_: WrongTokenException) {
                 setStage(Stage.SETUP_AGAIN)
                 delay(RETRY_MS)

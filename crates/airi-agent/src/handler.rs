@@ -17,7 +17,7 @@ use smithay::{
     utils::{Logical, Point},
     wayland::text_input::TextInputSeat,
 };
-use tracing::{error, info, warn};
+use tracing::{debug, error, info, warn};
 
 use crate::{
     apps, launch,
@@ -31,9 +31,8 @@ use crate::{
 /// The Linux key code for each character a US keyboard can type, for apps that don't take text
 /// directly. The bool is whether Shift is held.
 fn key_for_char(c: char) -> Option<(u32, bool)> {
-    const LETTERS: &[u32] = &[
-        30, 48, 46, 32, 18, 33, 34, 35, 23, 36, 37, 38, 50, 49, 24, 25, 16, 19, 31, 20, 22, 47, 17, 45, 21, 44,
-    ];
+    const LETTERS: &[u32] =
+        &[30, 48, 46, 32, 18, 33, 34, 35, 23, 36, 37, 38, 50, 49, 24, 25, 16, 19, 31, 20, 22, 47, 17, 45, 21, 44];
     Some(match c {
         'a'..='z' => (LETTERS[c as usize - 'a' as usize], false),
         'A'..='Z' => (LETTERS[c as usize - 'A' as usize], true),
@@ -94,11 +93,8 @@ struct WindowInfo {
 impl State {
     pub fn on_event(&mut self, event: Event) {
         match event {
-            Event::Net(NetEvent::Connected { conn, role, out }) => {
-                let info = Payload::default()
-                    .string(env!("CARGO_PKG_VERSION"))
-                    .u32(proto::PROTOCOL_VERSION as u32)
-                    .u8(role);
+            Event::Net(NetEvent::Connected { conn, out }) => {
+                let info = Payload::default().string(env!("CARGO_PKG_VERSION")).u32(proto::PROTOCOL_VERSION as u32);
                 out.send(to_android::INFO, info.0);
                 self.conns.insert(conn, out);
             }
@@ -375,11 +371,8 @@ impl State {
         pointer.motion(self, under, &MotionEvent { location, serial: next_serial(), time });
         match kind {
             proto::POINTER_BUTTON_DOWN | proto::POINTER_BUTTON_UP => {
-                let state = if kind == proto::POINTER_BUTTON_DOWN {
-                    ButtonState::Pressed
-                } else {
-                    ButtonState::Released
-                };
+                let state =
+                    if kind == proto::POINTER_BUTTON_DOWN { ButtonState::Pressed } else { ButtonState::Released };
                 pointer.button(self, &ButtonEvent { serial: next_serial(), time, button, state });
             }
             proto::POINTER_SCROLL => {
@@ -397,7 +390,9 @@ impl State {
                 }
                 pointer.axis(self, frame);
             }
-            _ => {}
+            // The motion above is all this needs.
+            proto::POINTER_MOTION => {}
+            other => debug!(other, "unknown pointer event"),
         }
         pointer.frame(self);
     }
@@ -433,9 +428,8 @@ impl State {
         let state = if pressed { KeyState::Pressed } else { KeyState::Released };
         let time = self.now_ms();
         // Wayland key codes are the kernel's, offset by 8 for historical reasons.
-        keyboard.input::<(), _>(self, Keycode::new(code + 8), state, next_serial(), time, |_, _, _| {
-            FilterResult::Forward
-        });
+        keyboard
+            .input::<(), _>(self, Keycode::new(code + 8), state, next_serial(), time, |_, _, _| FilterResult::Forward);
     }
 
     fn on_text(&mut self, text: &str) {
@@ -478,15 +472,14 @@ impl State {
         }
         self.check_waiting();
         self.update_ime();
-        self.cleanup_popups();
+        self.popups.cleanup();
 
         // Apps that aren't on screen still need the odd frame callback, or some of them stop.
         if self.last_idle_frames.elapsed() >= Duration::from_secs(1) {
             self.last_idle_frames = Instant::now();
             let idle = &self.idle_output;
             for tracked in &self.windows {
-                let hidden =
-                    tracked.stage.and_then(|conn| self.stages.get(&conn)).is_none_or(|stage| !stage.visible);
+                let hidden = tracked.stage.and_then(|conn| self.stages.get(&conn)).is_none_or(|stage| !stage.visible);
                 if hidden {
                     tracked.window.send_frame(idle, time, Some(Duration::ZERO), |_, _| Some(idle.clone()));
                 }

@@ -10,13 +10,7 @@ mod stage;
 mod state;
 mod windows;
 
-use std::{
-    collections::HashMap,
-    env, fs,
-    path::PathBuf,
-    sync::Arc,
-    time::Instant,
-};
+use std::{collections::HashMap, env, fs, path::PathBuf, sync::Arc, time::Instant};
 
 use anyhow::{Context, bail};
 use smithay::{
@@ -60,9 +54,7 @@ fn read_token(path: Option<PathBuf>) -> anyhow::Result<Vec<u8>> {
     if text.len() != 64 || !text.bytes().all(|b| b.is_ascii_hexdigit()) {
         bail!("{} doesn't hold a 64-digit hex token", path.display());
     }
-    (0..32)
-        .map(|i| u8::from_str_radix(&text[i * 2..i * 2 + 2], 16).context("bad token"))
-        .collect()
+    (0..32).map(|i| u8::from_str_radix(&text[i * 2..i * 2 + 2], 16).context("bad token")).collect()
 }
 
 fn serve(port: u16, token_path: Option<PathBuf>) -> anyhow::Result<()> {
@@ -163,7 +155,6 @@ fn serve(port: u16, token_path: Option<PathBuf>) -> anyhow::Result<()> {
         android_clipboard: None,
         linux_clipboard: None,
         cursor: CursorImageStatus::default_named(),
-        started_at: Instant::now(),
     };
     launch::write_env_file(&state);
     state.start_xwayland();
@@ -191,7 +182,9 @@ airi-agent: Airi's Linux side
 
 fn main() -> anyhow::Result<()> {
     tracing_subscriber::fmt()
-        .with_env_filter(EnvFilter::try_from_env("AIRI_LOG").unwrap_or_else(|_| EnvFilter::new("airi_agent=info,smithay=warn")))
+        .with_env_filter(
+            EnvFilter::try_from_env("AIRI_LOG").unwrap_or_else(|_| EnvFilter::new("airi_agent=info,smithay=warn")),
+        )
         .without_time()
         .with_writer(std::io::stderr)
         .init();
@@ -230,4 +223,3 @@ fn main() -> anyhow::Result<()> {
         }
     }
 }
-

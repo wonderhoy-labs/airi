@@ -191,10 +191,8 @@ impl Stage {
         let fit = |content: i32, limit: i32, view: i32| {
             if content > limit { (content as f64 * self.scale).ceil() as i32 } else { view }
         };
-        let needed = Size::<i32, Physical>::from((
-            fit(content.w, limit.w, self.view.w),
-            fit(content.h, limit.h, self.view.h),
-        ));
+        let needed =
+            Size::<i32, Physical>::from((fit(content.w, limit.w, self.view.w), fit(content.h, limit.h, self.view.h)));
         // Going back to the view size happens when the window shrinks again, so this handles both.
         if needed != self.buffer {
             if let Err(err) = self.set_buffer_size(renderer, needed) {
@@ -206,11 +204,7 @@ impl Stage {
         }
     }
 
-    fn set_buffer_size(
-        &mut self,
-        renderer: &mut PixmanRenderer,
-        size: Size<i32, Physical>,
-    ) -> Result<(), PixmanError> {
+    fn set_buffer_size(&mut self, renderer: &mut PixmanRenderer, size: Size<i32, Physical>) -> Result<(), PixmanError> {
         if size == self.buffer && self.image.width() == size.w as usize && self.image.height() == size.h as usize {
             return Ok(());
         }
