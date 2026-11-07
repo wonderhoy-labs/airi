@@ -3,6 +3,7 @@
 use std::time::{Duration, Instant};
 
 use smithay::{
+    backend::renderer::utils::with_renderer_surface_state,
     desktop::{Window, WindowSurface},
     input::pointer::{CursorImageStatus, CursorImageSurfaceData},
     reexports::{
@@ -128,7 +129,11 @@ impl State {
                 toplevel.send_configure();
             }
         }
-        let Some(conn) = self.windows.get(index).and_then(|t| t.stage) else { return };
+        if index >= self.windows.len() {
+            return;
+        }
+        self.announce_when_drawn(index);
+        let Some(conn) = self.windows[index].stage else { return };
         let id = self.windows[index].id;
         self.layout_after_commit(conn, id, &window);
     }
@@ -221,8 +226,17 @@ impl State {
             .or_else(|| self.stages.values().next())
             .map(Stage::view_logical_size)
             .unwrap_or_else(|| DEFAULT_SIZE.into());
+        // Android hears about this once there's something to show. See `announce_when_drawn`.
         configure_window(&window, size, false);
-        self.announce_window(index);
+    }
+
+    /// Offers a window nothing is showing, now that it has drawn something. Some apps keep a window around
+    /// that never appears, and offering those would open a blank Android window.
+    fn announce_when_drawn(&mut self, index: usize) {
+        let tracked = &self.windows[index];
+        if tracked.stage.is_none() && tracked.announced.is_none() && has_drawn(&tracked.window) {
+            self.announce_window(index);
+        }
     }
 
     /// Tells an open Android window that another one is needed, since only a visible app can start one.
@@ -248,7 +262,7 @@ impl State {
     /// Offers windows that nothing is showing to an Android window that has just come to the front.
     pub fn announce_unshown_windows(&mut self) {
         for index in 0..self.windows.len() {
-            if self.windows[index].stage.is_none() {
+            if self.windows[index].stage.is_none() && has_drawn(&self.windows[index].window) {
                 self.announce_window(index);
             }
         }
@@ -635,6 +649,16 @@ pub fn configure_window(window: &Window, size: Size<i32, Logical>, activated: bo
             let _ = surface.set_maximized(true);
             let _ = surface.configure(Rectangle::from_size(size));
         }
+    }
+}
+
+/// Whether a window has ever had something to show.
+fn has_drawn(window: &Window) -> bool {
+    match window.underlying_surface() {
+        WindowSurface::Wayland(toplevel) => {
+            with_renderer_surface_state(toplevel.wl_surface(), |state| state.buffer().is_some()).unwrap_or(false)
+        }
+        WindowSurface::X11(surface) => surface.is_mapped(),
     }
 }
 

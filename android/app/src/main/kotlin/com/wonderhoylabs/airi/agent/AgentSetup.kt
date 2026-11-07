@@ -90,6 +90,7 @@ object AgentSetup {
             val output = resolver.openOutputStream(uri) ?: throw IOException("Android wouldn't open $name")
             output.use { out -> context.assets.open(name).use { it.copyTo(out) } }
         }
-        return "sh /mnt/shared/Download/$folder/install.sh ${hexToken(context)}"
+        // The space at the start keeps the token out of the shell's history.
+        return " sh /mnt/shared/Download/$folder/install.sh ${hexToken(context)}"
     }
 }
