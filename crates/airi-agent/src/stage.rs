@@ -43,9 +43,10 @@ pub const REPLACEMENT_GRACE: Duration = Duration::from_millis(1500);
 /// How long an app gets to open a window after being launched.
 pub const LAUNCH_TIMEOUT: Duration = Duration::from_secs(90);
 
-/// How long a window gets to redraw at a new size before the picture moves on without it. The keyboard
-/// takes about this long to slide, so an app that keeps up never shows anything but finished frames.
-pub const RESIZE_PATIENCE: Duration = Duration::from_millis(250);
+/// How long a window gets to redraw at a new size before the picture moves on without it. Apps took up
+/// to about 480 ms on a Pixel 10 Pro, and cutting one off shows a frame that's about to change again. This
+/// only keeps a hung app from holding the picture for long.
+pub const RESIZE_PATIENCE: Duration = Duration::from_millis(600);
 
 /// A size Android asked for that the app hasn't drawn yet.
 pub struct PendingResize {
@@ -275,10 +276,7 @@ impl Stage {
             }
         };
 
-        let output = &self.output;
-        for window in self.space.elements() {
-            window.send_frame(output, time, Some(Duration::ZERO), |_, _| Some(output.clone()));
-        }
+        self.send_frames(time);
 
         let full = Rectangle::from_size(self.buffer);
         let rects = if self.redraw_all {
@@ -291,6 +289,14 @@ impl Stage {
         };
         self.redraw_all = false;
         self.send_rects(&rects);
+    }
+
+    /// Tells apps they can draw their next frame.
+    pub fn send_frames(&self, time: Duration) {
+        let output = &self.output;
+        for window in self.space.elements() {
+            window.send_frame(output, time, Some(Duration::ZERO), |_, _| Some(output.clone()));
+        }
     }
 
     /// Copies the changed pixels out, so the compressing can happen on another thread.

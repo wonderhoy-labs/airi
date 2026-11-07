@@ -468,6 +468,10 @@ impl State {
             }
             if stage.can_draw() {
                 stage.draw(renderer, time);
+            } else if stage.pending_resize.is_some() {
+                // Most toolkits only draw when told to. Holding this back while waiting for the app
+                // to draw would leave each waiting for the other until the time ran out.
+                stage.send_frames(time);
             }
         }
         self.check_waiting();
