@@ -27,7 +27,7 @@ It doesn't need root, Shizuku or a computer. Setup takes one paste into the term
 
 ![Airi's list of Linux apps, Calculator on the home screen, and Calculator open](docs/screenshot.webp)
 
-> **This is early.** We've only tested it on one Pixel 10 Pro running Android 17. Nothing in the code is tied to that
+> **This is early.** We've only tested it on one Pixel 10 Pro running Android 17, build `CP3A.260905.009`. Nothing in the code is tied to that
 > model, so other phones with the Terminal app should work. If you try one, please
 > [open an issue](https://github.com/wonderhoy-labs/airi/issues) and tell us how it went, even if it just worked.
 
@@ -69,14 +69,17 @@ Linux does.
 
 **Launch** opens an app straight away.
 
-**Add** puts it on your launcher as an app of its own. The first time, Android asks you to allow Airi to install apps, and
-then it asks you to confirm each one. **Remove** takes it off again. Apps added this way find their way into your launcher's
-search and app list like any other. Tapping one starts Linux if it isn't running.
+**Add** puts it on your launcher as an app of its own. The first time, Android asks you to allow Airi to install apps, and then it asks
+you to confirm each one. Play Protect hasn't seen these apps before, because they're made on your phone, so it may offer to scan each one.
+**Remove** takes it off again.
+
+Tapping one of these apps starts Linux if it isn't running. The Terminal app appears for a moment, and your app opens by itself about 30 to
+45 seconds later.
 
 | To do this | Do this |
 | --- | --- |
 | Leave an app running | Go home or swipe back, like any other app |
-| Close an app | Swipe it away in Recents, or use its own close button |
+| Close an app | Swipe it away in Recents, or use its own close button. An app with unsaved work may ask first, so open it again to answer |
 | Show the keyboard | It opens when a text field asks for it, or tap the round button on the right edge |
 | Paste into Linux | Copy on Android, then go to the Linux app |
 
@@ -101,6 +104,9 @@ a Linux app, because Android doesn't let an app in the background open one.
 | Touch | Yes |
 | On-screen keyboard | Yes. Non-US characters need an app that takes text input directly |
 | Rotation | Yes |
+| Launcher apps | Yes, with their own name and icon in Recents |
+| Starting Linux from an icon | Yes, in 30 to 45 seconds |
+| Going to the background | Yes. Android freezes Airi after a moment, and everything carries on when you come back |
 | Dialogs and menus | Dialogs share their app's window. Only lightly tried |
 | A physical keyboard | Written, but not tried on a real one |
 | A mouse | Written, but not tried on a real one |
@@ -157,6 +163,16 @@ made on your phone and stays in Android's Keystore.
 The app has no secrets and no native code. It starts Airi's viewer and stays underneath it, because Android names a task in Recents
 after the activity at its root, and that's what makes it say Calculator and not Airi.
 
+### Starting Linux
+
+Only the Terminal app can start Linux, and it has to be opened to do that, so that's what Airi does. It comes back after a second and a half,
+and the Terminal app carries on in the background.
+
+That route has a trap in it. The Terminal app starts forwarding an allowed port early in boot, before anything in Linux is listening. If
+something connects in that gap, which is what happens when Airi is waiting for Linux, the Terminal app waits ten seconds and then stops
+forwarding the port, and it only looks again when a new listener appears. So for the first two minutes after boot, until someone gets through,
+the agent listens afresh every 12 seconds.
+
 ### Keeping the picture steady
 
 The keyboard is what makes this hard, because a window changes size every time it opens. Three things keep that from showing:
@@ -180,8 +196,8 @@ user has `sudo` without a password in the Terminal's Debian. Airi keeps the toke
 Any app on your phone can connect to the forwarded port, but it can't do anything there without the token. Each end proves that it has
 the token without sending it, so an app can't pretend to be the agent either.
 
-The setup command is on your clipboard and on screen for a moment, marked as sensitive so that keyboards don't preview it. If you think
-it got out, tap **Set up Airi in Linux again**, after clearing Airi's storage so that it makes a new token.
+The setup command is on your clipboard and on screen for a moment, marked as sensitive so that keyboards don't preview it. It starts with a
+space, which keeps it out of the terminal's history. If you think it got out, tap **Set up Airi in Linux again**, after clearing Airi's storage so that it makes a new token.
 
 **Traffic isn't encrypted.** It only crosses the phone's loopback, which other apps can't read without root.
 
@@ -216,16 +232,21 @@ after 90 seconds.
 
 **The keyboard doesn't come up.** Tap the round button on the right edge. Tapping a text field that's already focused doesn't open it.
 
+**Android won't install an app you're adding after you reinstalled Airi.** The key that signs them goes when Airi does, and Android only updates
+an app with the same key. Tap **Remove**, then **Add**. An app left over from before still opens, so you only need this to change it.
+
 ## Known issues
 
 - **Linux froze for several minutes, twice, soon after we compiled Rust in it.** Android showed the Terminal app and its VM stuck in the
-  kernel, with most of the VM's memory swapped out. It cleared up by itself the first time, and Android closed the Terminal app the
-  second time. We don't know the exact cause, and it isn't specific to Airi, but heavy memory use in Linux seems to be what sets it off.
+  kernel, with most of the VM's memory swapped out. It cleared up by itself the first time, and the Terminal app closed the second
+  time. We don't know the exact cause, and it isn't specific to Airi, but heavy memory use in Linux seems to be what sets it off.
 - X11 apps look soft, because they're drawn at normal size and scaled up. Wayland apps are sharp.
 - Apps take 200 to 500 ms to redraw after the keyboard moves. The picture holds still in the meantime.
 - Tapping a text field that already has focus doesn't open the keyboard, because Linux can't tell that apart from tapping anything else.
 - Characters a US keyboard can't type get lost in apps that don't take text input directly. X11 apps are the usual case.
 - Second windows of an app say Airi in Recents, because they don't have a launcher app under them.
+- A window that opens while Airi is in the background only appears when you next switch to a Linux app. Android doesn't let apps in the
+  background open windows.
 - Not every entry in the list is a real app, and Airi can't always tell.
 - Still untested: other phones, Android 15 and 16, tablets, a real mouse or keyboard, the clipboard, sound, desktop mode, and battery drain.
 
