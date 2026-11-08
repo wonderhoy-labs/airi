@@ -1,45 +1,45 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">Airi</string>
-    <string name="tagline">Linux apps on your launcher</string>
+	<string name="app_name">Airi</string>
+	<string name="tagline">Linux apps on your launcher</string>
 
-    <string name="status_checking">Looking for Linux…</string>
-    <string name="status_updating">Updating Airi in Linux…</string>
+	<string name="status_checking">Looking for Linux…</string>
+	<string name="status_updating">Updating Airi in Linux…</string>
 
-    <string name="no_terminal_title">Turn on Linux first</string>
-    <string name="no_terminal_body">Airi works with the Linux terminal built into Android. Turn on Linux development environment in Developer options, open the Terminal app and let it finish setting up. Airi carries on by itself after that.</string>
+	<string name="no_terminal_title">Turn on Linux first</string>
+	<string name="no_terminal_body">Airi works with the Linux terminal built into Android. Turn on Linux development environment in Developer options, open the Terminal app and let it finish setting up. Airi carries on by itself after that.</string>
 
-    <string name="setup_title">Set up Airi in Linux</string>
-    <string name="setup_body">Airi needs a small helper in Linux. Android doesn\'t let apps run commands there, so this takes one paste.</string>
-    <string name="setup_again_title">Set up Airi in Linux again</string>
-    <string name="setup_again_body">The helper in Linux was set up by a different install of Airi, so it won\'t talk to this one. Running the command again fixes that.</string>
-    <string name="setup_step_copy">Tap the button below. It copies a command and opens the Terminal app.</string>
-    <string name="setup_step_paste">In the terminal, touch and hold, tap Paste, then press Enter.</string>
-    <string name="setup_step_allow">When a notification asks about port 47821, tap Allow always. You can also turn it on in the Terminal app\'s settings, under Security.</string>
-    <string name="setup_button">Copy command and open Terminal</string>
-    <string name="setup_start_linux">Start Linux</string>
-    <string name="setup_failed">Couldn\'t prepare the helper: %1$s</string>
+	<string name="setup_title">Set up Airi in Linux</string>
+	<string name="setup_body">Airi needs a small helper in Linux. Android doesn\'t let apps run commands there, so this takes one paste.</string>
+	<string name="setup_again_title">Set up Airi in Linux again</string>
+	<string name="setup_again_body">The helper in Linux was set up by a different install of Airi, so it won\'t talk to this one. Running the command again fixes that.</string>
+	<string name="setup_step_copy">Tap the button below. It copies a command and opens the Terminal app.</string>
+	<string name="setup_step_paste">In the terminal, touch and hold, tap Paste, then press Enter.</string>
+	<string name="setup_step_allow">When a notification asks about port 47821, tap Allow always. You can also turn it on in the Terminal app\'s settings, under Security.</string>
+	<string name="setup_button">Copy command and open Terminal</string>
+	<string name="setup_start_linux">Start Linux</string>
+	<string name="setup_failed">Couldn\'t prepare the helper: %1$s</string>
 
-    <string name="linux_off_title">Linux isn\'t running</string>
-    <string name="linux_off_body">Start it and your apps show up here. Opening one from your launcher starts it too.</string>
-    <string name="linux_off_set_up_again">Set up Airi in Linux again</string>
+	<string name="linux_off_title">Linux isn\'t running</string>
+	<string name="linux_off_body">Start it and your apps show up here. Opening one from your launcher starts it too.</string>
+	<string name="linux_off_set_up_again">Set up Airi in Linux again</string>
 
-    <string name="apps_title">Apps in Linux</string>
-    <string name="no_apps_title">No apps yet</string>
-    <string name="no_apps_body">Install a graphical app in the terminal and it shows up here. For example: sudo apt install gnome-calculator</string>
+	<string name="apps_title">Apps in Linux</string>
+	<string name="no_apps_title">No apps yet</string>
+	<string name="no_apps_body">Install a graphical app in the terminal and it shows up here. For example: sudo apt install gnome-calculator</string>
 
-    <string name="launch">Launch</string>
-    <string name="add">Add</string>
-    <string name="remove">Remove</string>
-    <string name="add_needs_permission">Allow Airi to install apps, so that it can add this one to your launcher.</string>
-    <string name="add_failed">Couldn\'t add this app to your launcher.</string>
+	<string name="launch">Launch</string>
+	<string name="add">Add</string>
+	<string name="remove">Remove</string>
+	<string name="add_needs_permission">Allow Airi to install apps, so that it can add this one to your launcher.</string>
+	<string name="add_failed">Couldn\'t add this app to your launcher.</string>
 
-    <string name="viewer_opening">Opening %1$s…</string>
-    <string name="viewer_starting_linux">Starting Linux…</string>
-    <string name="viewer_no_linux">Couldn\'t reach Linux. Open Airi to check that it\'s set up.</string>
-    <string name="viewer_wrong_token">The helper in Linux belongs to a different install of Airi. Open Airi to set it up again.</string>
-    <string name="viewer_old_agent">The helper in Linux is out of date. Open Airi to update it.</string>
-    <string name="viewer_lost_linux">Lost the connection to Linux.</string>
-    <string name="viewer_try_again">Try again</string>
-    <string name="viewer_keyboard">Show or hide the keyboard</string>
+	<string name="viewer_opening">Opening %1$s…</string>
+	<string name="viewer_starting_linux">Starting Linux…</string>
+	<string name="viewer_no_linux">Couldn\'t reach Linux. Open Airi to check that it\'s set up.</string>
+	<string name="viewer_wrong_token">The helper in Linux belongs to a different install of Airi. Open Airi to set it up again.</string>
+	<string name="viewer_old_agent">The helper in Linux is out of date. Open Airi to update it.</string>
+	<string name="viewer_lost_linux">Lost the connection to Linux.</string>
+	<string name="viewer_try_again">Try again</string>
+	<string name="viewer_keyboard">Show or hide the keyboard</string>
 </resources>

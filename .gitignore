@@ -1,18 +1,27 @@
+# Node
+node_modules/
+dist/
+*.tsbuildinfo
+
 # Rust
 target/
 
 # Android
-build/
 .gradle/
 .kotlin/
+build/
 local.properties
-*.jks
 *.keystore
+*.jks
+captures/
+.cxx/
+.externalNativeBuild/
 
 # Editors and systems
 .idea/
 .vscode/
+*.iml
 .DS_Store
 
-# Built by tools/build-agent.sh
+# The agent tools/build-agent.ts builds for the app to bundle
 dist/

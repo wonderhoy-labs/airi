@@ -1,60 +1,60 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
-    <!-- The agent is reached through the port the Terminal app forwards to this phone's loopback. -->
-    <uses-permission android:name="android.permission.INTERNET" />
-    <uses-permission android:name="android.permission.USE_LOOPBACK_INTERFACE" />
-    <!-- Comes back from the Terminal app after opening it to start Linux. -->
-    <uses-permission android:name="android.permission.REORDER_TASKS" />
-    <!-- Puts each Linux app on the launcher. Android still asks you about each one. -->
-    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
-    <uses-permission android:name="android.permission.REQUEST_DELETE_PACKAGES" />
+	<!-- The agent is reached through the port the Terminal app forwards to this phone's loopback. -->
+	<uses-permission android:name="android.permission.INTERNET" />
+	<uses-permission android:name="android.permission.USE_LOOPBACK_INTERFACE" />
+	<!-- Comes back from the Terminal app after opening it to start Linux. -->
+	<uses-permission android:name="android.permission.REORDER_TASKS" />
+	<!-- Puts each Linux app on the launcher. Android still asks you about each one. -->
+	<uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
+	<uses-permission android:name="android.permission.REQUEST_DELETE_PACKAGES" />
 
-    <queries>
-        <package android:name="com.android.virtualization.terminal" />
-        <intent>
-            <action android:name="com.wonderhoylabs.airi.LINUX_APP" />
-        </intent>
-    </queries>
+	<queries>
+		<package android:name="com.android.virtualization.terminal" />
+		<intent>
+			<action android:name="com.wonderhoylabs.airi.LINUX_APP" />
+		</intent>
+	</queries>
 
-    <application
-        android:allowBackup="false"
-        android:icon="@mipmap/ic_launcher"
-        android:label="@string/app_name"
-        android:supportsRtl="true"
-        android:theme="@style/Theme.Airi">
+	<application
+		android:allowBackup="false"
+		android:icon="@mipmap/ic_launcher"
+		android:label="@string/app_name"
+		android:supportsRtl="true"
+		android:theme="@style/Theme.Airi">
 
-        <activity
-            android:name=".ui.MainActivity"
-            android:exported="true"
-            android:launchMode="singleTask">
-            <intent-filter>
-                <action android:name="android.intent.action.MAIN" />
-                <category android:name="android.intent.category.LAUNCHER" />
-            </intent-filter>
-        </activity>
+		<activity
+			android:name=".ui.MainActivity"
+			android:exported="true"
+			android:launchMode="singleTask">
+			<intent-filter>
+				<action android:name="android.intent.action.MAIN" />
+				<category android:name="android.intent.category.LAUNCHER" />
+			</intent-filter>
+		</activity>
 
-        <!--
-            The apps Airi makes open this. They're signed with this phone's own key, so a signature
-            permission can't cover them, and it's exported. All another app can do with that is open a
-            Linux app that's already installed.
-        -->
-        <activity
-            android:name=".viewer.ViewerActivity"
-            android:configChanges="density|fontScale|keyboard|keyboardHidden|layoutDirection|locale|mcc|mnc|navigation|orientation|screenLayout|screenSize|smallestScreenSize|touchscreen|uiMode"
-            android:exported="true"
-            android:resizeableActivity="true"
-            android:theme="@style/Theme.Airi.Viewer"
-            android:windowSoftInputMode="adjustResize|stateHidden">
-            <intent-filter>
-                <action android:name="android.intent.action.VIEW" />
-                <category android:name="android.intent.category.DEFAULT" />
-                <data android:scheme="airi" android:host="app" />
-            </intent-filter>
-        </activity>
+		<!--
+			The apps Airi makes open this. They're signed with this phone's own key, so a signature
+			permission can't cover them, and it's exported. All another app can do with that is open a
+			Linux app that's already installed.
+		-->
+		<activity
+			android:name=".viewer.ViewerActivity"
+			android:configChanges="density|fontScale|keyboard|keyboardHidden|layoutDirection|locale|mcc|mnc|navigation|orientation|screenLayout|screenSize|smallestScreenSize|touchscreen|uiMode"
+			android:exported="true"
+			android:resizeableActivity="true"
+			android:theme="@style/Theme.Airi.Viewer"
+			android:windowSoftInputMode="adjustResize|stateHidden">
+			<intent-filter>
+				<action android:name="android.intent.action.VIEW" />
+				<category android:name="android.intent.category.DEFAULT" />
+				<data android:scheme="airi" android:host="app" />
+			</intent-filter>
+		</activity>
 
-        <receiver
-            android:name=".launcher.InstallResultReceiver"
-            android:exported="false" />
-    </application>
+		<receiver
+			android:name=".launcher.InstallResultReceiver"
+			android:exported="false" />
+	</application>
 </manifest>

@@ -1,0 +1,56 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  # Also checks the third-party license notices, through the "verify" script.
+  checks:
+    uses: wonderhoy-labs/.github/.github/workflows/checks.yml@main
+
+  # The agent runs in Android's Linux terminal, which only exists on 64-bit Arm, so it's built and tested on
+  # the same kind of machine. The app bundles it.
+  agent:
+    uses: wonderhoy-labs/.github/.github/workflows/rust.yml@main
+    with:
+      test-os: '["ubuntu-24.04-arm"]'
+      package: airi-agent
+      apt-packages: libpixman-1-dev libxkbcommon-dev pkg-config
+      targets: '[{"os": "ubuntu-24.04-arm", "target": "aarch64-unknown-linux-gnu"}]'
+
+  android:
+    needs: agent
+    uses: wonderhoy-labs/.github/.github/workflows/android.yml@main
+    with:
+      name: airi
+      env-prefix: AIRI
+      rust-targets: aarch64-linux-android
+      download-artifact: airi-agent-aarch64-unknown-linux-gnu
+      prepare: mkdir -p dist && tar -xzf "$RUNNER_TEMP/artifact/airi-agent-aarch64-unknown-linux-gnu.tar.gz" -C dist
+    secrets:
+      KEYSTORE_BASE64: ${{ secrets.AIRI_KEYSTORE_BASE64 }}
+      KEYSTORE_PASSWORD: ${{ secrets.AIRI_KEYSTORE_PASSWORD }}
+      KEY_ALIAS: ${{ secrets.AIRI_KEY_ALIAS }}
+      KEY_PASSWORD: ${{ secrets.AIRI_KEY_PASSWORD }}
+
+  release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: [checks, agent, android]
+    permissions:
+      contents: write
+      id-token: write
+      attestations: write
+    uses: wonderhoy-labs/.github/.github/workflows/release.yml@main
+    with:
+      title: Airi
