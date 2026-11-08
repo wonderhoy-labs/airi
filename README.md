@@ -7,17 +7,15 @@
 <p align="center">Linux apps on your Android launcher.</p>
 
 <p align="center">
-  <a href="https://github.com/wonderhoy-labs/airi/actions/workflows/build.yml"><img src="https://github.com/wonderhoy-labs/airi/actions/workflows/build.yml/badge.svg" alt="Build"></a>
+  <a href="https://github.com/wonderhoy-labs/airi/actions/workflows/ci.yml"><img src="https://github.com/wonderhoy-labs/airi/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-Apache--2.0-blue" alt="License: Apache 2.0"></a>
+  <a href="#license-and-credits"><img src="https://img.shields.io/badge/Momoi%20Airi-MORE%20MORE%20JUMP!-FFAACC" alt="Named for Momoi Airi of MORE MORE JUMP!"></a>
 </p>
-
-<p align="center"><sub>A <a href="https://github.com/wonderhoy-labs">Wonderhoy Labs</a> project</sub></p>
 
 Android's Terminal app runs a real Debian in a virtual machine, and it can show graphical apps. The catch is that they
 all live inside one Display window, as far as Android is concerned, in a little desktop of their own.
 
 Airi takes them out of there. Each Linux app gets:
-
 - its own icon on your launcher, next to your other apps
 - its own window, with its own name and icon in Recents
 - the size of whatever window Android gives it, including when you rotate or the keyboard opens
@@ -56,7 +54,6 @@ You can also [build it yourself](#development).
 ## Set up
 
 Android doesn't let apps run anything in Linux, so this is the one step you do by hand.
-
 1. Open Airi and tap **Copy command and open Terminal**.
 2. In the terminal, touch and hold, tap **Paste**, then press Enter.
 3. When a notification asks about port 47821, tap **Allow always**. If you miss it, it's in the Terminal app's settings
@@ -76,12 +73,12 @@ you to confirm each one. Play Protect hasn't seen these apps before, because the
 Tapping one of these apps starts Linux if it isn't running. The Terminal app appears for a moment, and your app opens by itself about 30 to
 45 seconds later.
 
-| To do this | Do this |
-| --- | --- |
-| Leave an app running | Go home or swipe back, like any other app |
-| Close an app | Swipe it away in Recents, or use its own close button. An app with unsaved work may ask first, so open it again to answer |
-| Show the keyboard | It opens when a text field asks for it, or tap the round button on the right edge |
-| Paste into Linux | Copy on Android, then go to the Linux app |
+| To do this           | Do this                                                                                                                   |
+| -------------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| Leave an app running | Go home or swipe back, like any other app                                                                                 |
+| Close an app         | Swipe it away in Recents, or use its own close button. An app with unsaved work may ask first, so open it again to answer |
+| Show the keyboard    | It opens when a text field asks for it, or tap the round button on the right edge                                         |
+| Paste into Linux     | Copy on Android, then go to the Linux app                                                                                 |
 
 Some apps won't go as small as a phone, like Chromium, which needs 500 logical pixels of width. Airi zooms those out just enough to
 fit, so they still fill the window. If you install something new in Linux, it shows up the next time you open Airi.
@@ -95,25 +92,25 @@ a Linux app, because Android doesn't let an app in the background open one.
 ~/.local/bin/airi-agent run mousepad
 ```
 
-## What works
+## What has been tested
 
-| | Status |
-| --- | --- |
-| Wayland apps | Yes. Tried with GNOME Calculator, Mousepad, Foot and Chromium |
-| X11 apps | Yes, through Xwayland, and they look soft. Tried with XTerm |
-| Touch | Yes |
-| On-screen keyboard | Yes. Non-US characters need an app that takes text input directly |
-| Rotation | Yes |
-| Launcher apps | Yes, with their own name and icon in Recents |
-| Starting Linux from an icon | Yes, in 30 to 45 seconds |
-| Going to the background | Yes. Android freezes Airi after a moment, and everything carries on when you come back |
-| Dialogs and menus | Dialogs share their app's window. Only lightly tried |
-| A physical keyboard | Written, but not tried on a real one |
-| A mouse | Written, but not tried on a real one |
-| Clipboard | Written, but not tried yet |
-| Sound | Goes through the Terminal app and not Airi. We haven't checked it |
-| Pixel desktop mode and resizable windows | Should work, and we haven't tried it |
-| Video and games | Every frame is copied by the processor, so expect them to be slow. We haven't measured it |
+|                                          | Status                                                                                    |
+| ---------------------------------------- | ----------------------------------------------------------------------------------------- |
+| Wayland apps                             | Yes. Tried with GNOME Calculator, Mousepad, Foot and Chromium                             |
+| X11 apps                                 | Yes, through Xwayland, and they look soft. Tried with XTerm                               |
+| Touch                                    | Yes                                                                                       |
+| On-screen keyboard                       | Yes. Non-US characters need an app that takes text input directly                         |
+| Rotation                                 | Yes                                                                                       |
+| Launcher apps                            | Yes, with their own name and icon in Recents                                              |
+| Starting Linux from an icon              | Yes, in 30 to 45 seconds                                                                  |
+| Going to the background                  | Yes. Android freezes Airi after a moment, and everything carries on when you come back    |
+| Dialogs and menus                        | Dialogs share their app's window. Only lightly tried                                      |
+| A physical keyboard                      | Written, but not tried on a real one                                                      |
+| A mouse                                  | Written, but not tried on a real one                                                      |
+| Clipboard                                | Written, but not tried yet                                                                |
+| Sound                                    | Goes through the Terminal app and not Airi. We haven't checked it                         |
+| Pixel desktop mode and resizable windows | Should work, and we haven't tried it                                                      |
+| Video and games                          | Every frame is copied by the processor, so expect them to be slow. We haven't measured it |
 
 ## How it works
 
@@ -176,7 +173,6 @@ the agent listens afresh every 12 seconds.
 ### Keeping the picture steady
 
 The keyboard is what makes this hard, because a window changes size every time it opens. Three things keep that from showing:
-
 - The surface never changes size for the keyboard. It slides over, and the frames are drawn at one-to-one, so nothing gets stretched.
 - After a resize, the agent keeps showing the old picture until the app has finished drawing the new one, for up to 600 ms.
 - Android reports where the keyboard will end up as it starts to move, so the app redraws during the slide.
@@ -184,7 +180,7 @@ The keyboard is what makes this hard, because a window changes size every time i
 Key repeat comes from Android and not from the Linux apps, because an app busy redrawing misses a key going up and types the letter
 over and over.
 
-## Security
+## Security and privacy
 
 Worth reading, because the agent is a way into Linux.
 
@@ -254,8 +250,15 @@ an app with the same key. Tap **Remove**, then **Add**. An app left over from be
 
 You need Rust, JDK 17 or newer, and the Android SDK with platform 37 and NDK 30. The app bundles the agent, so build that first:
 
+Airi follows the [Wonderhoy Labs guideline](.claude/skills/wonderhoy-unification/SKILL.md), like every Wonderhoy Labs project.
+The shared tools need Node 24 or newer and pnpm. Format before you commit, and check the result:
+
 ```bash
-./tools/build-agent.sh
+pnpm install && pnpm format && pnpm unify
+```
+
+```bash
+pnpm install && pnpm agent
 ```
 
 ```bash
@@ -265,17 +268,18 @@ cd android && ./gradlew :app:assembleRelease
 The APK ends up at `android/app/build/outputs/apk/release/app-release.apk`. It's signed with your debug key unless you set
 `AIRI_KEYSTORE`, `AIRI_KEYSTORE_PASSWORD`, `AIRI_KEY_ALIAS` and `AIRI_KEY_PASSWORD`.
 
-`tools/build-agent.sh` cross-compiles on a Mac or an x86 machine, against libraries it downloads from the same Debian release the
+`pnpm agent` (`tools/build-agent.ts`) cross-compiles on a Mac or an x86 machine, against libraries it downloads from the same Debian release the
 Terminal app runs, using the NDK's clang. Please don't compile in the phone's Linux. See [Known issues](#known-issues).
 
-| Where | What's in it |
-| --- | --- |
-| `crates/airi-agent/` | The agent: compositor, app list, launching, and the network side |
-| `crates/airi-viewer/` | The native half of the viewer: decodes frames and draws them to a surface |
-| `android/app/` | The Airi app |
-| `android/stub/` | The template for the apps **Add** makes |
-| `android/app/src/main/assets/install.sh` | What the setup command runs |
-| `docs/protocol.md` | How the two ends talk |
+| Where                                    | What's in it                                                                        |
+| ---------------------------------------- | ----------------------------------------------------------------------------------- |
+| `crates/airi-agent/`                     | The agent: compositor, app list, launching, and the network side                    |
+| `crates/airi-viewer/`                    | The native half of the viewer: decodes frames and draws them to a surface           |
+| `android/app/`                           | The Airi app                                                                        |
+| `android/stub/`                          | The template for the apps **Add** makes                                             |
+| `android/app/src/main/assets/install.sh` | What the setup command runs                                                         |
+| `docs/protocol.md`                       | How the two ends talk                                                               |
+| `tools/`                                 | `build-agent.ts` and `third-party-licenses.ts`, and the shared Wonderhoy Labs tools |
 
 To test against a real Linux from an emulator, which can't run the Terminal app, tunnel the port through `adb`. The emulator's app then
 uses `127.0.0.1`, the same as on a phone. Debug builds read a token from `dev.properties` in the app's external files directory, as
@@ -295,11 +299,13 @@ Run the device tests with `am instrument`, because Gradle's connected task unins
 adb shell am instrument -w com.wonderhoylabs.airi.test/androidx.test.runner.AndroidJUnitRunner
 ```
 
-If you change the Rust dependencies, run `tools/third-party-licenses.py` and commit the result. CI checks that it's current.
+If you change the Rust dependencies, run `pnpm licenses` and commit the result. CI checks that it's current with `pnpm verify`.
 
-Pushing a tag like `v0.1.0` builds the APK and publishes a release. See [build.yml](.github/workflows/build.yml) for the signing
-secrets it can use. Without them, each release gets a throwaway key and has to be installed fresh instead of updating. `VERSION` and the
-version in `Cargo.toml` have to match, because the app replaces an agent of a different version.
+Pushing a tag like `v0.1.0`, matching `VERSION`, builds the agent and the APK and publishes a GitHub release through
+[ci.yml](.github/workflows/ci.yml). It signs the APK with the repository's `AIRI_KEYSTORE_BASE64`, `AIRI_KEYSTORE_PASSWORD`,
+`AIRI_KEY_ALIAS` and `AIRI_KEY_PASSWORD` secrets. Without them, each release gets a throwaway key and has to be installed
+fresh instead of updating. `VERSION` and the version in `Cargo.toml` have to match, because the app replaces an agent of a different
+version. `pnpm unify` checks that they do.
 
 ## License and credits
 
@@ -307,11 +313,17 @@ Airi is a [Wonderhoy Labs](https://github.com/wonderhoy-labs) project, released 
 affiliated with Google.
 
 It stands on the work of others:
-
 - [Smithay](https://github.com/Smithay/smithay), under the MIT License, which does the hard parts of being a compositor.
 - [resvg](https://github.com/linebender/resvg), under the Apache License 2.0 or MIT License, which draws icons.
 - [lz4_flex](https://github.com/PSeitz/lz4_flex), under the MIT License, which compresses frames.
 - [apksig](https://android.googlesource.com/platform/tools/apksig/), under the Apache License 2.0, which signs the launcher apps.
+- [Jetpack Compose and AndroidX](https://developer.android.com/jetpack), under the Apache License 2.0, for the app.
+- [Material Color Utilities](https://github.com/material-foundation/material-color-utilities), under the Apache License 2.0, which
+  makes the app's colours from Momoi Airi's image colour.
 
 The app carries the notices for everything compiled into it, in
 [third-party-licenses.txt](android/app/src/main/assets/third-party-licenses.txt).
+
+Airi is named for Momoi Airi of MORE MORE JUMP!, from Project SEKAI COLORFUL STAGE! feat. Hatsune Miku. Wonderhoy Labs is a
+fan project, not affiliated with SEGA, Colorful Palette or Crypton Future Media, who own Project SEKAI and its characters.
+The Apache License doesn't cover the Airi name or logo.

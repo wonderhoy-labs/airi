@@ -1,30 +1,30 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
-    <queries>
-        <package android:name="com.wonderhoylabs.airi" />
-    </queries>
+	<queries>
+		<package android:name="com.wonderhoylabs.airi" />
+	</queries>
 
-    <application
-        android:allowBackup="false"
-        android:hasCode="true"
-        android:icon="@mipmap/icon"
-        android:label="AIRI_APP_LABEL_PLACEHOLDER">
+	<application
+		android:allowBackup="false"
+		android:hasCode="true"
+		android:icon="@mipmap/icon"
+		android:label="AIRI_APP_LABEL_PLACEHOLDER">
 
-        <activity
-            android:name=".LaunchActivity"
-            android:autoRemoveFromRecents="true"
-            android:exported="true"
-            android:theme="@android:style/Theme.Translucent.NoTitleBar">
-            <intent-filter>
-                <action android:name="android.intent.action.MAIN" />
-                <category android:name="android.intent.category.LAUNCHER" />
-            </intent-filter>
-            <!-- This is how Airi finds the apps it made, without asking to see every app. -->
-            <intent-filter>
-                <action android:name="com.wonderhoylabs.airi.LINUX_APP" />
-                <category android:name="android.intent.category.DEFAULT" />
-            </intent-filter>
-        </activity>
-    </application>
+		<activity
+			android:name=".LaunchActivity"
+			android:autoRemoveFromRecents="true"
+			android:exported="true"
+			android:theme="@android:style/Theme.Translucent.NoTitleBar">
+			<intent-filter>
+				<action android:name="android.intent.action.MAIN" />
+				<category android:name="android.intent.category.LAUNCHER" />
+			</intent-filter>
+			<!-- This is how Airi finds the apps it made, without asking to see every app. -->
+			<intent-filter>
+				<action android:name="com.wonderhoylabs.airi.LINUX_APP" />
+				<category android:name="android.intent.category.DEFAULT" />
+			</intent-filter>
+		</activity>
+	</application>
 </manifest>
