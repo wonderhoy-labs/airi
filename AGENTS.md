@@ -19,6 +19,7 @@ each Linux app; **Launch** opens one without adding it. Named for Momoi Airi of 
 | `crates/airi-viewer/`           | The viewer's native half, built into the app with cargo-ndk                  |
 | `android/app/`                  | The Airi app                                                                 |
 | `android/stub/`                 | The template for the launcher apps **Add** makes                             |
+| `android/client/`               | The client library other apps use to open Linux apps, released as an AAR     |
 | `tools/build-agent.ts`          | Builds the agent into `dist/airi-agent` for the app to bundle (`pnpm agent`) |
 | `tools/third-party-licenses.ts` | Writes the app's license notices (`pnpm licenses`, checked by `pnpm verify`) |
 
@@ -27,7 +28,7 @@ each Linux app; **Launch** opens one without adding it. Named for Momoi Airi of 
 ```bash
 pnpm install && pnpm unify && pnpm verify
 pnpm agent
-cd android && ./gradlew spotlessApply :app:testDebugUnitTest :app:lintRelease :app:assembleRelease
+cd android && ./gradlew spotlessApply :client:lintRelease :client:assembleRelease :app:testDebugUnitTest :app:lintRelease :app:assembleRelease
 ```
 
 The agent only compiles for Linux. On a Mac, `pnpm agent` cross-compiles against Debian trixie's libraries with
@@ -45,6 +46,9 @@ the NDK's clang, and Clippy runs the same way:
   tcp:47821`, `adb -s <emulator> reverse tcp:47821 tcp:47821`, and a `token=` line in the debug build's
   `dev.properties`. Start the emulator with `-crash-report-mode never`, or a crash consent dialog blocks it.
 - Turning on Install unknown apps on the real phone is for the maintainer to do. Clean up test leftovers.
+- **The launch contract is public.** Other apps use `airi://app/<desktop file ID>`, the `LINUX_APP` action and the
+  `desktop_id` asset, through `android/client/` or directly, so keep them working and list what changes in the
+  README's "Use it in your app". The stub repeats the link on purpose, so the launcher apps carry no library code.
 - Never replace the Android signing key. CI signs with the `AIRI_KEYSTORE_BASE64`, `AIRI_KEYSTORE_PASSWORD`,
   `AIRI_KEY_ALIAS` and `AIRI_KEY_PASSWORD` secrets.
 

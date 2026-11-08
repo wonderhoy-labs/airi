@@ -15,4 +15,4 @@ dependencyResolutionManagement {
 }
 
 rootProject.name = "airi"
-include(":app", ":stub")
+include(":app", ":client", ":stub")

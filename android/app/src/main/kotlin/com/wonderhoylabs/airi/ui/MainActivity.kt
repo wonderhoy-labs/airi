@@ -4,7 +4,6 @@ import android.content.ClipData
 import android.content.ClipDescription
 import android.content.ClipboardManager
 import android.content.Intent
-import android.net.Uri
 import android.os.Bundle
 import android.os.PersistableBundle
 import android.widget.Toast
@@ -17,6 +16,7 @@ import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import com.wonderhoylabs.airi.R
 import com.wonderhoylabs.airi.agent.AgentSetup
+import com.wonderhoylabs.airi.client.Airi
 import com.wonderhoylabs.airi.launcher.AppBuilder
 import com.wonderhoylabs.airi.launcher.LauncherApps
 import com.wonderhoylabs.airi.viewer.ViewerActivity
@@ -109,9 +109,8 @@ class MainActivity : ComponentActivity() {
 			startActivity(entry)
 			return
 		}
-		val uri = Uri.Builder().scheme("airi").authority("app").appendPath(app.id).build()
 		startActivity(
-			Intent(Intent.ACTION_VIEW, uri, this, ViewerActivity::class.java)
+			Intent(Intent.ACTION_VIEW, Airi.appUri(app.id), this, ViewerActivity::class.java)
 				.addFlags(Intent.FLAG_ACTIVITY_NEW_DOCUMENT),
 		)
 	}

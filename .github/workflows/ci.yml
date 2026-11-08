@@ -35,6 +35,10 @@ jobs:
     with:
       name: airi
       env-prefix: AIRI
+      gradle-tasks: >-
+        spotlessCheck :client:lintRelease :client:assembleRelease :client:assembleDebugAndroidTest
+        :app:testDebugUnitTest :app:lintRelease :app:assembleRelease
+      library-files: client/build/outputs/aar/client-release.aar
       rust-targets: aarch64-linux-android
       download-artifact: airi-agent-aarch64-unknown-linux-gnu
       prepare: mkdir -p dist && tar -xzf "$RUNNER_TEMP/artifact/airi-agent-aarch64-unknown-linux-gnu.tar.gz" -C dist

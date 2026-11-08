@@ -13,6 +13,9 @@ import java.nio.charset.StandardCharsets;
 /**
  * Opens a Linux app in Airi. This is the only code in the apps Airi makes.
  *
+ * <p>The link is the same one the client library's {@code Airi.openIntent} makes. It's written out here so the apps
+ * carry no library code.
+ *
  * <p>It stays underneath Airi's window instead of finishing, because Android names a task in Recents
  * after the activity at its root. That's what makes this show up as the Linux app, not as Airi.
  */

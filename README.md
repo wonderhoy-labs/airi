@@ -92,25 +92,92 @@ a Linux app, because Android doesn't let an app in the background open one.
 ~/.local/bin/airi-agent run mousepad
 ```
 
+## Use it in your app
+
+Any Android app can open Linux apps in Airi, and find the ones Airi has put on the launcher. The client library in
+[`android/client/`](android/client/) does both. It's Java with no dependencies, and it runs on Android 8 and up, where
+it just finds that Airi isn't there. Add it from Airi's releases in `settings.gradle.kts`:
+
+```kotlin
+dependencyResolutionManagement {
+	repositories {
+		google()
+		mavenCentral()
+		// Wonderhoy Labs libraries, straight from each project's GitHub releases.
+		ivy {
+			url = uri("https://github.com/wonderhoy-labs")
+			patternLayout { artifact("[organisation]/releases/download/v[revision]/[organisation]-[module]-[revision].[ext]") }
+			metadataSources { artifact() }
+			content { includeGroup("airi") }
+		}
+	}
+}
+```
+
+and in your module:
+
+```kotlin
+implementation("airi:client:0.2.0@aar")
+```
+
+Then:
+
+```kotlin
+if (Airi.isInstalled(context)) {
+	// GNOME Calculator in a window of its own. Airi starts Linux first if it has to.
+	startActivity(Airi.openIntent("org.gnome.Calculator.desktop"))
+}
+
+// The Linux apps on the launcher, with their names and icons.
+for (app in Airi.launcherApps(context)) {
+	Log.i("Linux", "${app.label} is ${app.desktopId}")
+}
+```
+
+A Linux app goes by its desktop file ID, the name of its `.desktop` file, such as `org.gnome.Calculator.desktop`.
+`ls /usr/share/applications` in the terminal lists most of them.
+
+| Entry point                                     | What it does                                                                                                            |
+| ----------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| `Airi.isInstalled(context)`                     | Whether Airi is on the phone                                                                                            |
+| `Airi.openIntent(desktopId)`                    | Opens a Linux app. With `startActivityForResult`, `RESULT_OK` means its window closed normally                          |
+| `Airi.launcherApps(context)`                    | The Linux apps on the launcher, as `LinuxApp`s with a desktop file ID, name, package, `loadIcon()` and `launchIntent()` |
+| `Airi.launcherApp(context, desktopId)`          | One of those, or null if that app isn't on the launcher                                                                 |
+| `Airi.appUri(desktopId)`, `Airi.desktopId(uri)` | The `airi://app/<desktop file ID>` link, both ways                                                                      |
+
+`openIntent` opens in your app's task, the way a launcher app of Airi's does. Add `Intent.FLAG_ACTIVITY_NEW_DOCUMENT`
+to give it a task of its own, though then there's no result. For an app that's on the launcher, its `launchIntent()`
+is better: it has one task, with its own name and icon in Recents.
+
+The library is a thin layer over a contract, which also works without it. It won't change in a way that breaks an
+app that uses it.
+
+| Since | What                   | How                                                                                                                                                                                                 |
+| ----- | ---------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 0.1.0 | Open a Linux app       | `ACTION_VIEW` on `airi://app/<desktop file ID>`, which Airi's `.viewer.ViewerActivity` takes. It sets `RESULT_OK` when the window closes normally                                                   |
+| 0.1.0 | Find the launcher apps | Activities that answer `com.wonderhoylabs.airi.LINUX_APP`, each in a package of its own with the desktop file ID as text in its `desktop_id` asset. From Android 11, that needs a `<queries>` entry |
+| 0.2.0 | The client library     | `airi-client-<version>.aar` on each release                                                                                                                                                         |
+
 ## What has been tested
 
-|                                          | Status                                                                                    |
-| ---------------------------------------- | ----------------------------------------------------------------------------------------- |
-| Wayland apps                             | Yes. Tried with GNOME Calculator, Mousepad, Foot and Chromium                             |
-| X11 apps                                 | Yes, through Xwayland, and they look soft. Tried with XTerm                               |
-| Touch                                    | Yes                                                                                       |
-| On-screen keyboard                       | Yes. Non-US characters need an app that takes text input directly                         |
-| Rotation                                 | Yes                                                                                       |
-| Launcher apps                            | Yes, with their own name and icon in Recents                                              |
-| Starting Linux from an icon              | Yes, in 30 to 45 seconds                                                                  |
-| Going to the background                  | Yes. Android freezes Airi after a moment, and everything carries on when you come back    |
-| Dialogs and menus                        | Dialogs share their app's window. Only lightly tried                                      |
-| A physical keyboard                      | Written, but not tried on a real one                                                      |
-| A mouse                                  | Written, but not tried on a real one                                                      |
-| Clipboard                                | Written, but not tried yet                                                                |
-| Sound                                    | Goes through the Terminal app and not Airi. We haven't checked it                         |
-| Pixel desktop mode and resizable windows | Should work, and we haven't tried it                                                      |
-| Video and games                          | Every frame is copied by the processor, so expect them to be slow. We haven't measured it |
+|                                          | Status                                                                                                        |
+| ---------------------------------------- | ------------------------------------------------------------------------------------------------------------- |
+| Wayland apps                             | Yes. Tried with GNOME Calculator, Mousepad, Foot and Chromium                                                 |
+| X11 apps                                 | Yes, through Xwayland, and they look soft. Tried with XTerm                                                   |
+| Touch                                    | Yes                                                                                                           |
+| On-screen keyboard                       | Yes. Non-US characters need an app that takes text input directly                                             |
+| Rotation                                 | Yes                                                                                                           |
+| Launcher apps                            | Yes, with their own name and icon in Recents                                                                  |
+| Starting Linux from an icon              | Yes, in 30 to 45 seconds                                                                                      |
+| Going to the background                  | Yes. Android freezes Airi after a moment, and everything carries on when you come back                        |
+| Dialogs and menus                        | Dialogs share their app's window. Only lightly tried                                                          |
+| A physical keyboard                      | Written, but not tried on a real one                                                                          |
+| A mouse                                  | Written, but not tried on a real one                                                                          |
+| Clipboard                                | Written, but not tried yet                                                                                    |
+| Other apps opening Linux apps            | The client library's tests pass on an emulator, against Airi and a launcher app. Not with Linux behind it yet |
+| Sound                                    | Goes through the Terminal app and not Airi. We haven't checked it                                             |
+| Pixel desktop mode and resizable windows | Should work, and we haven't tried it                                                                          |
+| Video and games                          | Every frame is copied by the processor, so expect them to be slow. We haven't measured it                     |
 
 ## How it works
 
@@ -277,6 +344,7 @@ Terminal app runs, using the NDK's clang. Please don't compile in the phone's Li
 | `crates/airi-viewer/`                    | The native half of the viewer: decodes frames and draws them to a surface           |
 | `android/app/`                           | The Airi app                                                                        |
 | `android/stub/`                          | The template for the apps **Add** makes                                             |
+| `android/client/`                        | The client library, for other apps                                                  |
 | `android/app/src/main/assets/install.sh` | What the setup command runs                                                         |
 | `docs/protocol.md`                       | How the two ends talk                                                               |
 | `tools/`                                 | `build-agent.ts` and `third-party-licenses.ts`, and the shared Wonderhoy Labs tools |
@@ -299,9 +367,16 @@ Run the device tests with `am instrument`, because Gradle's connected task unins
 adb shell am instrument -w com.wonderhoylabs.airi.test/androidx.test.runner.AndroidJUnitRunner
 ```
 
+The client library's tests run on their own. Most of them need Airi installed, and a launcher app, or the template they're
+made from, `android/stub/build/outputs/apk/release/stub-release.apk`:
+
+```bash
+cd android && ANDROID_SERIAL=<emulator> ./gradlew :client:connectedDebugAndroidTest
+```
+
 If you change the Rust dependencies, run `pnpm licenses` and commit the result. CI checks that it's current with `pnpm verify`.
 
-Pushing a tag like `v0.1.0`, matching `VERSION`, builds the agent and the APK and publishes a GitHub release through
+Pushing a tag like `v0.2.0`, matching `VERSION`, builds the agent, the APK and the client library and publishes a GitHub release through
 [ci.yml](.github/workflows/ci.yml). It signs the APK with the repository's `AIRI_KEYSTORE_BASE64`, `AIRI_KEYSTORE_PASSWORD`,
 `AIRI_KEY_ALIAS` and `AIRI_KEY_PASSWORD` secrets. Without them, each release gets a throwaway key and has to be installed
 fresh instead of updating. `VERSION` and the version in `Cargo.toml` have to match, because the app replaces an agent of a different

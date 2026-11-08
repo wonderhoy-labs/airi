@@ -9,7 +9,6 @@ import android.content.res.Configuration
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.Color
-import android.net.Uri
 import android.os.Bundle
 import android.view.Gravity
 import android.view.PointerIcon
@@ -32,6 +31,7 @@ import com.wonderhoylabs.airi.agent.Message
 import com.wonderhoylabs.airi.agent.Payload
 import com.wonderhoylabs.airi.agent.Protocol
 import com.wonderhoylabs.airi.agent.WrongTokenException
+import com.wonderhoylabs.airi.client.Airi
 import com.wonderhoylabs.airi.launcher.AppIcons
 import java.io.IOException
 import kotlin.concurrent.thread
@@ -93,7 +93,7 @@ class ViewerActivity :
 		// Tells the app on the launcher that this closed on purpose, if it's what opened this.
 		setResult(RESULT_OK)
 		val uri = intent.data
-		desktopId = uri?.lastPathSegment.orEmpty()
+		desktopId = Airi.desktopId(uri).orEmpty()
 		windowId = uri?.getQueryParameter("window")?.toIntOrNull() ?: 0
 
 		buildViews()
@@ -401,7 +401,7 @@ class ViewerActivity :
 	}
 
 	private fun openWindow(id: Int, desktop: String) {
-		val uri = Uri.Builder().scheme("airi").authority("app").appendPath(desktop.ifEmpty { "window" })
+		val uri = Airi.appUri(desktop.ifEmpty { "window" }).buildUpon()
 			.appendQueryParameter("window", id.toString()).build()
 		startActivity(
 			Intent(Intent.ACTION_VIEW, uri, this, ViewerActivity::class.java)

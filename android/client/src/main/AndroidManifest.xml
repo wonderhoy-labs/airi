@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+	<!-- Merged into the app that uses this, so Android lets it see Airi and the apps Airi made. -->
+	<queries>
+		<package android:name="com.wonderhoylabs.airi" />
+		<intent>
+			<action android:name="com.wonderhoylabs.airi.LINUX_APP" />
+		</intent>
+	</queries>
+</manifest>
