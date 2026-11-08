@@ -7,13 +7,13 @@ import android.content.pm.PackageInstaller
 import android.content.pm.PackageManager
 import android.net.Uri
 import android.provider.Settings
+import com.wonderhoylabs.airi.client.Airi
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import java.io.File
 
 /** Installs and removes the small apps that put Linux apps on the launcher. */
 object LauncherApps {
-	private const val ACTION = "com.wonderhoylabs.airi.LINUX_APP"
 	const val EXTRA_PACKAGE = "package"
 
 	sealed interface Result {
@@ -30,7 +30,7 @@ object LauncherApps {
 
 	/** The packages of every app Airi has put on the launcher. */
 	fun installed(context: Context): Set<String> = context.packageManager
-		.queryIntentActivities(Intent(ACTION), PackageManager.ResolveInfoFlags.of(0))
+		.queryIntentActivities(Intent(Airi.ACTION_LINUX_APP), PackageManager.ResolveInfoFlags.of(0))
 		.map { it.activityInfo.packageName }
 		.toSet()
 
