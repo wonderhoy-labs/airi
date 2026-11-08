@@ -7,9 +7,16 @@
 <p align="center">Linux apps on your Android launcher.</p>
 
 <p align="center">
-  <a href="https://github.com/wonderhoy-labs/airi/actions/workflows/ci.yml"><img src="https://github.com/wonderhoy-labs/airi/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
+  <a href="https://github.com/wonderhoy-labs/airi/actions/workflows/ci.yml"
+    ><img src="https://github.com/wonderhoy-labs/airi/actions/workflows/ci.yml/badge.svg" alt="CI"></a
+  >
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-Apache--2.0-blue" alt="License: Apache 2.0"></a>
-  <a href="#license-and-credits"><img src="https://img.shields.io/badge/Momoi%20Airi-MORE%20MORE%20JUMP!-FFAACC" alt="Named for Momoi Airi of MORE MORE JUMP!"></a>
+  <a href="#license-and-credits"
+    ><img
+      src="https://img.shields.io/badge/Momoi%20Airi-MORE%20MORE%20JUMP!-FFAACC"
+      alt="Named for Momoi Airi of MORE MORE JUMP!"
+    ></a
+  >
 </p>
 
 Android's Terminal app runs a real Debian in a virtual machine, and it can show graphical apps. The catch is that they
