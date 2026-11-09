@@ -1,5 +1,6 @@
 // Collects the license of everything compiled into the agent and the viewer, which the app ships.
-// Run `pnpm licenses` after changing Rust dependencies, and commit the result. `pnpm verify` checks it's current.
+// Run `pnpm run licenses` after changing Rust dependencies, and commit the result. `pnpm verify` checks it's current.
+// Plain `pnpm licenses` runs pnpm's own command instead.
 
 import { execFileSync } from "node:child_process";
 import { existsSync, readdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
@@ -90,7 +91,9 @@ function notices(): { text: string; packages: number; groups: number } {
 const { text, packages, groups } = notices();
 if (process.argv.includes("--check")) {
 	if (!existsSync(OUTPUT) || readFileSync(OUTPUT, "utf8") !== text) {
-		console.error("The third-party license notices are out of date. Run `pnpm licenses` and commit the result.");
+		console.error(
+			"The third-party license notices are out of date. Run `pnpm run licenses` and commit the result.",
+		);
 		process.exit(1);
 	}
 	console.info(`The license notices are current: ${packages} packages, ${groups} license texts.`);
