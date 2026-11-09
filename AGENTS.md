@@ -21,7 +21,7 @@ each Linux app; **Launch** opens one without adding it. Named for Momoi Airi of 
 | `android/stub/`                 | The template for the launcher apps **Add** makes                             |
 | `android/client/`               | The client library other apps use to open Linux apps, released as an AAR     |
 | `tools/build-agent.ts`          | Builds the agent into `dist/airi-agent` for the app to bundle (`pnpm agent`) |
-| `tools/third-party-licenses.ts` | Writes the app's license notices (`pnpm licenses`, checked by `pnpm verify`) |
+| `tools/third-party-licenses.ts` | Writes the app's license notices (`pnpm run licenses`, checked by `pnpm verify`) |
 
 ## Build, test and format
 

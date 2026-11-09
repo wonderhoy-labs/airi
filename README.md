@@ -374,7 +374,7 @@ made from, `android/stub/build/outputs/apk/release/stub-release.apk`:
 cd android && ANDROID_SERIAL=<emulator> ./gradlew :client:connectedDebugAndroidTest
 ```
 
-If you change the Rust dependencies, run `pnpm licenses` and commit the result. CI checks that it's current with `pnpm verify`.
+If you change the Rust dependencies, run `pnpm run licenses` and commit the result. CI checks that it's current with `pnpm verify`.
 
 Pushing a tag like `v0.2.0`, matching `VERSION`, builds the agent, the APK and the client library and publishes a GitHub release through
 [ci.yml](.github/workflows/ci.yml). It signs the APK with the repository's `AIRI_KEYSTORE_BASE64`, `AIRI_KEYSTORE_PASSWORD`,
