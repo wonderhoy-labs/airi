@@ -25,7 +25,7 @@
 		"verify": "node tools/third-party-licenses.ts --check"
 	},
 	"devDependencies": {
-		"@biomejs/biome": "2.6.2",
+		"@biomejs/biome": "2.6.3",
 		"@material/material-color-utilities": "0.3.0",
 		"@types/node": "26.6.6",
 		"typescript": "7.0.2"
