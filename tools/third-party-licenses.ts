@@ -91,7 +91,9 @@ function notices(): { text: string; packages: number; groups: number } {
 const { text, packages, groups } = notices();
 if (process.argv.includes("--check")) {
 	if (!existsSync(OUTPUT) || readFileSync(OUTPUT, "utf8") !== text) {
-		console.error("The third-party license notices are out of date. Run `pnpm run licenses` and commit the result.");
+		console.error(
+			"The third-party license notices are out of date. Run `pnpm run licenses` and commit the result.",
+		);
 		process.exit(1);
 	}
 	console.info(`The license notices are current: ${packages} packages, ${groups} license texts.`);
