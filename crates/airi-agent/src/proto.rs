@@ -2,7 +2,7 @@
 
 use std::io::{self, Read, Write};
 
-use hmac::{Hmac, Mac};
+use hmac::{Hmac, KeyInit, Mac};
 use sha2::Sha256;
 
 pub const PROTOCOL_VERSION: u16 = 1;
