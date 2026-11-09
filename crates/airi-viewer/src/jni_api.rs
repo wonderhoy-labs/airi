@@ -3,7 +3,7 @@
 use std::{ffi::c_void, ptr, sync::Mutex};
 
 use jni::{
-	JNIEnv,
+	EnvUnowned, Outcome,
 	objects::{JByteBuffer, JClass, JObject},
 	sys::{jint, jlong},
 };
@@ -112,7 +112,7 @@ fn viewer(handle: jlong) -> &'static Mutex<Viewer> {
 }
 
 #[unsafe(no_mangle)]
-pub extern "system" fn Java_com_wonderhoylabs_airi_viewer_NativeView_create(_env: JNIEnv, _class: JClass) -> jlong {
+pub extern "system" fn Java_com_wonderhoylabs_airi_viewer_NativeView_create(_env: EnvUnowned, _class: JClass) -> jlong {
 	let viewer =
 		Viewer { canvas: Canvas::default(), screen: Screen::default(), window: ptr::null_mut(), window_size: (0, 0) };
 	Box::into_raw(Box::new(Mutex::new(viewer))) as jlong
@@ -120,7 +120,7 @@ pub extern "system" fn Java_com_wonderhoylabs_airi_viewer_NativeView_create(_env
 
 #[unsafe(no_mangle)]
 pub extern "system" fn Java_com_wonderhoylabs_airi_viewer_NativeView_destroy(
-	_env: JNIEnv,
+	_env: EnvUnowned,
 	_class: JClass,
 	handle: jlong,
 ) {
@@ -131,7 +131,7 @@ pub extern "system" fn Java_com_wonderhoylabs_airi_viewer_NativeView_destroy(
 /// Attaches a surface, or detaches with null, and shows the current picture straight away.
 #[unsafe(no_mangle)]
 pub extern "system" fn Java_com_wonderhoylabs_airi_viewer_NativeView_setSurface(
-	env: JNIEnv,
+	env: EnvUnowned,
 	_class: JClass,
 	handle: jlong,
 	surface: JObject,
@@ -140,7 +140,7 @@ pub extern "system" fn Java_com_wonderhoylabs_airi_viewer_NativeView_setSurface(
 		ptr::null_mut()
 	} else {
 		// Safety: both pointers come straight from the JVM for this call.
-		unsafe { ANativeWindow_fromSurface(env.get_raw() as *mut c_void, surface.as_raw() as *mut c_void) }
+		unsafe { ANativeWindow_fromSurface(env.as_raw() as *mut c_void, surface.as_raw() as *mut c_void) }
 	};
 	let mut viewer = viewer(handle).lock().unwrap();
 	viewer.set_window(window);
@@ -150,7 +150,7 @@ pub extern "system" fn Java_com_wonderhoylabs_airi_viewer_NativeView_setSurface(
 /// Sets the size of the surface's area, in pixels.
 #[unsafe(no_mangle)]
 pub extern "system" fn Java_com_wonderhoylabs_airi_viewer_NativeView_setArea(
-	_env: JNIEnv,
+	_env: EnvUnowned,
 	_class: JClass,
 	handle: jlong,
 	width: jint,
@@ -165,13 +165,15 @@ pub extern "system" fn Java_com_wonderhoylabs_airi_viewer_NativeView_setArea(
 /// or -1 if the frame was bad.
 #[unsafe(no_mangle)]
 pub extern "system" fn Java_com_wonderhoylabs_airi_viewer_NativeView_frame(
-	env: JNIEnv,
+	mut env: EnvUnowned,
 	_class: JClass,
 	handle: jlong,
 	buffer: JByteBuffer,
 	length: jint,
 ) -> jlong {
-	let Ok(address) = env.get_direct_buffer_address(&buffer) else { return -1 };
+	let Outcome::Ok(address) = env.with_env(|env| env.get_direct_buffer_address(&buffer)).into_outcome() else {
+		return -1;
+	};
 	// Safety: Kotlin passes the length it read into this direct buffer, and holds it during the call.
 	let frame = unsafe { std::slice::from_raw_parts(address, length as usize) };
 	let mut viewer = viewer(handle).lock().unwrap();
