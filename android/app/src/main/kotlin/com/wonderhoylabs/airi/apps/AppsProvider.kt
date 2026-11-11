@@ -12,8 +12,11 @@ import com.wonderhoylabs.airi.agent.Payload
 import com.wonderhoylabs.airi.agent.Protocol
 import com.wonderhoylabs.airi.launcher.AppBuilder
 import com.wonderhoylabs.airi.launcher.LauncherApps
+import com.wonderhoylabs.airi.linux.Linux
+import com.wonderhoylabs.airi.linux.Minori
 import org.json.JSONArray
 import java.io.FileNotFoundException
+import java.util.concurrent.Callable
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
 import kotlin.concurrent.thread
@@ -25,11 +28,15 @@ import kotlin.concurrent.thread
  * ```
  * adb shell content query --uri content://com.wonderhoylabs.airi.apps/apps
  * adb shell content read --uri content://com.wonderhoylabs.airi.apps/icon/org.gnome.Calculator.desktop > icon.png
+ * adb shell content read --uri 'content://com.wonderhoylabs.airi.apps/icon/foot.desktop?source=minori:<machine>' > icon.png
  * ```
  *
- * Each row has `desktop_id`, `on_launcher` (1 if Airi has put it on the launcher) and `name`, in that order, so the
- * name, which can hold anything, comes last. Open one with `airi://app/<desktop_id>`. The list comes from Linux, so
- * there are no rows while Linux isn't running; Airi's own screen starts it.
+ * Each row has `desktop_id`, `on_launcher` (1 if Airi has put it on the launcher), `name` and `source`, in that order.
+ * The source says which Linux it's in: `terminal` for Android's terminal, or `minori:<machine ID>` for one of Minori's
+ * machines. It came last, after the name, in Airi 0.4.0, so a reader of 0.3.0's rows still finds its columns where they
+ * were; take the name as everything between `name=` and the last `, source=`. Open an app with the link [Linux.appUri]
+ * makes: `airi://app/<desktop_id>` for the terminal, or `airi://minori/<machine ID>/<desktop_id>`. The lists come from
+ * Linux, so a Linux that isn't running has no rows; Airi's own screen starts the terminal, and Minori starts machines.
  */
 class AppsProvider : ContentProvider() {
 	override fun onCreate(): Boolean = true
@@ -42,11 +49,27 @@ class AppsProvider : ContentProvider() {
 		sortOrder: String?,
 	): Cursor {
 		if (uri.pathSegments != listOf(APPS)) throw IllegalArgumentException("Airi only lists $APPS, not $uri")
+		val context = context!!
+		val machines = Minori.machines(context).filter { it.airi && it.running }.map { it.linux }
+		val sources = listOf(Linux.Terminal) + machines
+		// Each Linux answers on its own, so one that's slow doesn't hold up the rest.
+		val pool = Executors.newFixedThreadPool(sources.size)
+		val lists = try {
+			pool.invokeAll(
+				sources.map { linux ->
+					Callable { runCatching { withAgent(linux) { agent -> listApps(agent) } }.getOrDefault(emptyList()) }
+				},
+			).map { it.get() }
+		} finally {
+			pool.shutdownNow()
+		}
+		val onLauncher = LauncherApps.installed(context)
 		val cursor = MatrixCursor(COLUMNS)
-		val apps = runCatching { withAgent { agent -> listApps(agent) } }.getOrDefault(emptyList())
-		val onLauncher = LauncherApps.installed(context!!)
-		apps.sortedBy { it.second.lowercase() }.forEach { (id, name) ->
-			cursor.addRow(arrayOf<Any>(id, if (AppBuilder.packageFor(id) in onLauncher) 1 else 0, name))
+		sources.zip(lists).forEach { (linux, apps) ->
+			apps.sortedBy { it.second.lowercase() }.forEach { (id, name) ->
+				val added = if (AppBuilder.packageFor(linux, id) in onLauncher) 1 else 0
+				cursor.addRow(arrayOf<Any>(id, added, name, linux.key))
+			}
 		}
 		return cursor
 	}
@@ -54,8 +77,10 @@ class AppsProvider : ContentProvider() {
 	override fun openFile(uri: Uri, mode: String): ParcelFileDescriptor {
 		val segments = uri.pathSegments
 		if (mode != "r" || segments.size != 2 || segments[0] != ICON) throw FileNotFoundException("No such file: $uri")
+		val linux = uri.getQueryParameter(SOURCE)?.let { Linux.fromKey(it) ?: throw FileNotFoundException("No Linux $it") }
+			?: Linux.Terminal
 		val png =
-			runCatching { withAgent { agent -> icon(agent, segments[1]) } }.getOrNull()
+			runCatching { withAgent(linux) { agent -> icon(agent, segments[1]) } }.getOrNull()
 				?: throw FileNotFoundException("Linux has no icon for ${segments[1]}, or isn't running")
 		val (read, write) = ParcelFileDescriptor.createPipe()
 		thread(name = "airi-icon", isDaemon = true) {
@@ -78,9 +103,9 @@ class AppsProvider : ContentProvider() {
 	override fun update(uri: Uri, values: ContentValues?, selection: String?, selectionArgs: Array<out String>?): Int =
 		throw UnsupportedOperationException("Read only")
 
-	/** Talks to the agent for one answer. Its reads block, so a stuck Linux is cut off by closing the connection. */
-	private fun <T> withAgent(ask: (AgentConnection) -> T): T {
-		val agent = AgentSetup.connect(context!!)
+	/** Talks to an agent for one answer. Its reads block, so a stuck Linux is cut off by closing the connection. */
+	private fun <T> withAgent(linux: Linux, ask: (AgentConnection) -> T): T {
+		val agent = AgentSetup.connect(context!!, linux)
 		val timer = Executors.newSingleThreadScheduledExecutor()
 		timer.schedule({ agent.close() }, ANSWER_TIMEOUT_SECONDS, TimeUnit.SECONDS)
 		try {
@@ -118,7 +143,8 @@ class AppsProvider : ContentProvider() {
 		const val AUTHORITY = "com.wonderhoylabs.airi.apps"
 		private const val APPS = "apps"
 		private const val ICON = "icon"
-		private val COLUMNS = arrayOf("desktop_id", "on_launcher", "name")
+		private const val SOURCE = "source"
+		val COLUMNS = arrayOf("desktop_id", "on_launcher", "name", "source")
 		private const val ANSWER_TIMEOUT_SECONDS = 5L
 	}
 }

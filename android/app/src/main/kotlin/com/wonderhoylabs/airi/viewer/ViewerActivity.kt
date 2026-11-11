@@ -33,6 +33,8 @@ import com.wonderhoylabs.airi.agent.Protocol
 import com.wonderhoylabs.airi.agent.WrongTokenException
 import com.wonderhoylabs.airi.client.Airi
 import com.wonderhoylabs.airi.launcher.AppIcons
+import com.wonderhoylabs.airi.linux.Linux
+import com.wonderhoylabs.airi.linux.Minori
 import java.io.IOException
 import kotlin.concurrent.thread
 import kotlin.math.roundToInt
@@ -50,6 +52,7 @@ class ViewerActivity :
 	private lateinit var retry: Button
 	private lateinit var keyboard: ImageButton
 
+	private var linux: Linux = Linux.Terminal
 	private var desktopId = ""
 	private var windowId = 0
 	private val native = NativeView.create()
@@ -93,12 +96,13 @@ class ViewerActivity :
 		// Tells the app on the launcher that this closed on purpose, if it's what opened this.
 		setResult(RESULT_OK)
 		val uri = intent.data
+		linux = Linux.fromUri(uri) ?: Linux.Terminal
 		desktopId = Airi.desktopId(uri).orEmpty()
 		windowId = uri?.getQueryParameter("window")?.toIntOrNull() ?: 0
 
 		buildViews()
-		appIcon = AppIcons.load(this, desktopId)?.let { BitmapFactory.decodeByteArray(it, 0, it.size) }
-		setLabel(AppIcons.name(this, desktopId) ?: getString(R.string.app_name))
+		appIcon = AppIcons.load(this, linux, desktopId)?.let { BitmapFactory.decodeByteArray(it, 0, it.size) }
+		setLabel(AppIcons.name(this, linux, desktopId) ?: getString(R.string.app_name))
 
 		// Back leaves the app running, the same as it does for an Android app you came back to.
 		onBackInvokedDispatcher.registerOnBackInvokedCallback(OnBackInvokedDispatcher.PRIORITY_DEFAULT) {
@@ -226,28 +230,58 @@ class ViewerActivity :
 	}
 
 	private fun connectToLinux(): AgentConnection? {
-		val appName = AppIcons.name(this, desktopId) ?: getString(R.string.app_name)
+		val appName = AppIcons.name(this, linux, desktopId) ?: getString(R.string.app_name)
 		showStatus(getString(R.string.viewer_opening, appName))
 		var startedLinux = false
 		val deadline = System.currentTimeMillis() + LINUX_START_TIMEOUT_MS
 		while (!closing) {
+			val machine = (linux as? Linux.Machine)?.let { Minori.machine(this, it.id) }
+			if (linux is Linux.Machine && machine?.airi != true) {
+				showStatus(getString(R.string.viewer_no_machine), working = false)
+				return null
+			}
 			try {
-				return AgentSetup.connect(this)
+				// A stopped machine has nothing to connect to yet; Minori is asked to start it below.
+				if (machine == null || machine.running) return AgentSetup.connect(this, linux)
 			} catch (_: WrongTokenException) {
-				showStatus(getString(R.string.viewer_wrong_token), working = false)
+				val text = if (machine == null) {
+					getString(R.string.viewer_wrong_token)
+				} else {
+					getString(R.string.viewer_machine_wrong_token, machine.name)
+				}
+				showStatus(text, working = false)
 				return null
 			} catch (_: IOException) {
-				if (System.currentTimeMillis() > deadline) {
-					showStatus(getString(R.string.viewer_no_linux), working = false)
-					return null
-				}
-				if (!startedLinux) {
-					startedLinux = true
+				// Not up yet.
+			}
+			if (System.currentTimeMillis() > deadline) {
+				showStatus(
+					getString(
+						if (machine ==
+							null
+						) {
+							R.string.viewer_no_linux
+						} else {
+							R.string.viewer_no_machine
+						},
+					),
+					working = false,
+				)
+				return null
+			}
+			if (!startedLinux) {
+				startedLinux = true
+				if (machine == null) {
 					showStatus(getString(R.string.viewer_starting_linux))
 					runOnUiThread(::startLinux)
+				} else {
+					showStatus(getString(R.string.viewer_starting_machine, machine.name))
+					if (machine.state != "running" && machine.state != "starting") {
+						runOnUiThread { runCatching { startActivity(Minori.startIntent(machine.id)) } }
+					}
 				}
-				Thread.sleep(RETRY_DELAY_MS)
 			}
+			Thread.sleep(RETRY_DELAY_MS)
 		}
 		return null
 	}
@@ -401,7 +435,7 @@ class ViewerActivity :
 	}
 
 	private fun openWindow(id: Int, desktop: String) {
-		val uri = Airi.appUri(desktop.ifEmpty { "window" }).buildUpon()
+		val uri = linux.appUri(desktop.ifEmpty { "window" }).buildUpon()
 			.appendQueryParameter("window", id.toString()).build()
 		startActivity(
 			Intent(Intent.ACTION_VIEW, uri, this, ViewerActivity::class.java)

@@ -12,6 +12,7 @@ import android.graphics.Typeface
 import android.security.keystore.KeyGenParameterSpec
 import android.security.keystore.KeyProperties
 import com.android.apksig.ApkSigner
+import com.wonderhoylabs.airi.linux.Linux
 import java.io.ByteArrayOutputStream
 import java.io.File
 import java.math.BigInteger
@@ -29,20 +30,20 @@ import javax.security.auth.x500.X500Principal
 
 /**
  * Makes the small app that puts one Linux app on the launcher. It starts from a template built with
- * Airi, and changes four things: its package, its name, its icon, and which Linux app it opens.
+ * Airi, and changes four things: its package, its name, its icon, and which Linux app it opens, from which Linux.
  */
 class AppBuilder(private val context: Context) {
-	fun build(desktopId: String, name: String, iconPng: ByteArray?, output: File) {
+	fun build(linux: Linux, desktopId: String, name: String, iconPng: ByteArray?, output: File) {
 		val unsigned = File.createTempFile("app", ".apk", context.cacheDir)
 		try {
-			writeUnsigned(desktopId, name, iconPng, unsigned)
+			writeUnsigned(linux, desktopId, name, iconPng, unsigned)
 			sign(unsigned, output)
 		} finally {
 			unsigned.delete()
 		}
 	}
 
-	private fun writeUnsigned(desktopId: String, name: String, iconPng: ByteArray?, output: File) {
+	private fun writeUnsigned(linux: Linux, desktopId: String, name: String, iconPng: ByteArray?, output: File) {
 		val replaced = mutableSetOf<String>()
 		ZipInputStream(context.assets.open(TEMPLATE).buffered()).use { template ->
 			ZipOutputStream(output.outputStream().buffered()).use { apk ->
@@ -54,7 +55,7 @@ class AppBuilder(private val context: Context) {
 					val data = when {
 						entry.name == MANIFEST -> BinaryManifest.replaceStrings(
 							original,
-							mapOf(TEMPLATE_PACKAGE to packageFor(desktopId), TEMPLATE_LABEL to name),
+							mapOf(TEMPLATE_PACKAGE to packageFor(linux, desktopId), TEMPLATE_LABEL to name),
 						).also { replaced += MANIFEST }
 
 						entry.name == DESKTOP_ID -> desktopId.toByteArray().also { replaced += DESKTOP_ID }
@@ -68,6 +69,8 @@ class AppBuilder(private val context: Context) {
 					// Android reads the resource table straight out of the file, so it can't be compressed.
 					writeEntry(apk, entry.name, data, stored = entry.name == "resources.arsc")
 				}
+				// An app for a Minori machine says which one, and the stub opens its app there instead of in the terminal.
+				if (linux is Linux.Machine) writeEntry(apk, MACHINE, linux.id.toByteArray(), stored = false)
 			}
 		}
 		// An app that installs but opens the wrong thing, or has no icon, is worse than an error.
@@ -159,6 +162,7 @@ class AppBuilder(private val context: Context) {
 		private const val TEMPLATE = "app-template.apk"
 		private const val MANIFEST = "AndroidManifest.xml"
 		private const val DESKTOP_ID = "assets/desktop_id"
+		private const val MACHINE = "assets/machine"
 		private const val ICON = "icon"
 		private const val TEMPLATE_PACKAGE = "com.wonderhoylabs.airi.linux.template"
 		private const val TEMPLATE_LABEL = "AIRI_APP_LABEL_PLACEHOLDER"
@@ -177,12 +181,18 @@ class AppBuilder(private val context: Context) {
 			0xFFE64A19.toInt(),
 		)
 
-		/** Gives each Linux app a package of its own that stays the same across rebuilds. */
-		fun packageFor(desktopId: String): String {
+		/**
+		 * Gives each Linux app a package of its own that stays the same across rebuilds. The terminal's keep the names
+		 * they had before Airi knew Minori, and a machine's app gets its own, so that the same app can be on the
+		 * launcher from each.
+		 */
+		fun packageFor(linux: Linux, desktopId: String): String {
 			val readable = desktopId.removeSuffix(".desktop").lowercase()
 				.replace(Regex("[^a-z0-9]+"), "_").trim('_').take(40)
-			val hash = MessageDigest.getInstance("SHA-256").digest(desktopId.toByteArray()).toHexString().take(8)
-			return "com.wonderhoylabs.airi.linux.a_${readable}_$hash"
+			val key = if (linux is Linux.Machine) "${linux.key}/$desktopId" else desktopId
+			val hash = MessageDigest.getInstance("SHA-256").digest(key.toByteArray()).toHexString().take(8)
+			val kind = if (linux is Linux.Machine) "m" else "a"
+			return "com.wonderhoylabs.airi.linux.${kind}_${readable}_$hash"
 		}
 	}
 }

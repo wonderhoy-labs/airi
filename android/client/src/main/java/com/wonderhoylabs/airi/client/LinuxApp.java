@@ -10,6 +10,9 @@ public final class LinuxApp {
 	/** The desktop file ID of the Linux app, such as {@code org.gnome.Calculator.desktop}. */
 	public final String desktopId;
 
+	/** The Minori machine it's in, or null for Android's terminal. */
+	public final String machineId;
+
 	/** Its name on the launcher. */
 	public final String label;
 
@@ -18,8 +21,9 @@ public final class LinuxApp {
 
 	private final String activity;
 
-	LinuxApp(String desktopId, String label, String packageName, String activity) {
+	LinuxApp(String desktopId, String machineId, String label, String packageName, String activity) {
 		this.desktopId = desktopId;
+		this.machineId = machineId;
 		this.label = label;
 		this.packageName = packageName;
 		this.activity = activity;
@@ -44,6 +48,6 @@ public final class LinuxApp {
 
 	@Override
 	public String toString() {
-		return "LinuxApp(" + desktopId + ", " + label + ", " + packageName + ")";
+		return "LinuxApp(" + (machineId == null ? "" : machineId + "/") + desktopId + ", " + label + ", " + packageName + ")";
 	}
 }

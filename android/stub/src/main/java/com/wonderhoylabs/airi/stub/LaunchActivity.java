@@ -33,15 +33,36 @@ public final class LaunchActivity extends Activity {
 	}
 
 	private void open() {
-		try (InputStream in = getAssets().open("desktop_id")) {
-			String desktopId = new String(in.readAllBytes(), StandardCharsets.UTF_8).trim();
-			Intent intent = new Intent(Intent.ACTION_VIEW, new Uri.Builder()
-					.scheme("airi").authority("app").appendPath(desktopId).build());
+		try {
+			String desktopId = asset("desktop_id");
+			String machine = machine();
+			Uri.Builder link = new Uri.Builder().scheme("airi");
+			if (machine == null) {
+				link.authority("app").appendPath(desktopId);
+			} else {
+				link.authority("minori").appendPath(machine).appendPath(desktopId);
+			}
+			Intent intent = new Intent(Intent.ACTION_VIEW, link.build());
 			intent.setClassName(AIRI, AIRI + ".viewer.ViewerActivity");
 			startActivityForResult(intent, VIEWER);
 		} catch (IOException | ActivityNotFoundException e) {
 			Toast.makeText(this, "This app needs Airi. Install it, then try again.", Toast.LENGTH_LONG).show();
 			finish();
+		}
+	}
+
+	private String asset(String name) throws IOException {
+		try (InputStream in = getAssets().open(name)) {
+			return new String(in.readAllBytes(), StandardCharsets.UTF_8).trim();
+		}
+	}
+
+	/** The Minori machine the app is in. Apps for Android's terminal have no such asset. */
+	private String machine() {
+		try {
+			return asset("machine");
+		} catch (IOException e) {
+			return null;
 		}
 	}
 
