@@ -23,6 +23,9 @@ Airi takes them out of there. Each Linux app gets:
 
 It doesn't need root, Shizuku or a computer. Setup takes one paste into the terminal.
 
+It also shows apps from [Minori](https://github.com/wonderhoy-labs/minori)'s machines, the Linux virtual machines and
+Termux userlands Minori runs, at the same time as the Terminal's. Airi's list says which Linux each app is from.
+
 ![Airi's list of Linux apps, Calculator on the home screen, and Calculator open](docs/screenshot.webp)
 
 > **This is early.** We've only tested it on one Pixel 10 Pro running Android 17, build `CP3A.260905.009`. Nothing in the code is tied to that
@@ -83,6 +86,20 @@ Tapping one of these apps starts Linux if it isn't running. The Terminal app app
 Some apps won't go as small as a phone, like Chromium, which needs 500 logical pixels of width. Airi zooms those out just enough to
 fit, so they still fill the window. If you install something new in Linux, it shows up the next time you open Airi.
 
+### Minori's machines
+
+With [Minori](https://github.com/wonderhoy-labs/minori) 0.4.0 or later installed, Airi lists Minori's machines under
+Android's terminal: its virtual machines with Minori's guest agent, and its Termux userlands that have glibc, such as
+Debian. Nothing has to be set up in the Terminal for this, and the two work at the same time.
+
+- **Set up in Minori** under a machine hands Airi's key to Minori, which opens that machine with Airi's setup filled
+  in. Tap **Install** there (or **Start and install**), and Minori installs Airi's helper in the machine over SSH.
+- **Start** asks Minori to start a stopped machine. Opening one of its apps from the launcher does that too.
+- **Add** works the same as for the Terminal's apps, and each machine's apps are apps of their own, so the same app can
+  be on the launcher from more than one Linux.
+
+Airi reaches each machine through Minori, never through a port on the phone, so Android's terminal keeps port 47821.
+
 ### From the terminal
 
 To run something from the terminal and see it in Android, start it with `airi-agent`. It gets a window of its own when you next switch to
@@ -117,7 +134,7 @@ dependencyResolutionManagement {
 and in your module:
 
 ```kotlin
-implementation("airi:client:0.3.0@aar")
+implementation("airi:client:0.4.0@aar")
 ```
 
 Then:
@@ -128,11 +145,18 @@ if (Airi.isInstalled(context)) {
 	startActivity(Airi.openIntent("org.gnome.Calculator.desktop"))
 }
 
-// The Linux apps on the launcher, with their names and icons.
+// The same app from one of Minori's machines. Airi asks Minori to start the machine if it has to.
+if (Airi.canOpenMinoriApps(context)) {
+	startActivity(Airi.openMinoriIntent(machineId, "org.gnome.Calculator.desktop"))
+}
+
+// The Linux apps on the launcher, with their names and icons. machineId is null for Android's terminal.
 for (app in Airi.launcherApps(context)) {
-	Log.i("Linux", "${app.label} is ${app.desktopId}")
+	Log.i("Linux", "${app.label} is ${app.desktopId} in ${app.machineId ?: "the terminal"}")
 }
 ```
+
+A machine ID is the one Minori gives the machine: the `id` in its helper's `list`, or in `minori://vm/<id>`.
 
 A Linux app goes by its desktop file ID, the name of its `.desktop` file, such as `org.gnome.Calculator.desktop`.
 `ls /usr/share/applications` in the terminal lists most of them.
@@ -144,6 +168,10 @@ A Linux app goes by its desktop file ID, the name of its `.desktop` file, such a
 | `Airi.launcherApps(context)`                    | The Linux apps on the launcher, as `LinuxApp`s with a desktop file ID, name, package, `loadIcon()` and `launchIntent()` |
 | `Airi.launcherApp(context, desktopId)`          | One of those, or null if that app isn't on the launcher                                                                 |
 | `Airi.appUri(desktopId)`, `Airi.desktopId(uri)` | The `airi://app/<desktop file ID>` link, both ways                                                                      |
+| `Airi.openMinoriIntent(machineId, desktopId)`   | Opens a Linux app from one of Minori's machines, starting the machine through Minori if it has to                       |
+| `Airi.canOpenMinoriApps(context)`               | Whether the installed Airi knows Minori's machines, which it does from 0.4.0                                            |
+| `Airi.minoriAppUri(machineId, desktopId)`, `Airi.minoriMachine(uri)` | The `airi://minori/<machine ID>/<desktop file ID>` link; `desktopId(uri)` reads both kinds         |
+| `Airi.launcherApp(context, machineId, desktopId)` | A launcher app from a machine, or from the terminal when `machineId` is null. `LinuxApp.machineId` says which         |
 
 `openIntent` opens in your app's task, the way a launcher app of Airi's does. Add `Intent.FLAG_ACTIVITY_NEW_DOCUMENT`
 to give it a task of its own, though then there's no result. For an app that's on the launcher, its `launchIntent()`
@@ -158,10 +186,13 @@ app that uses it.
 | 0.1.0 | Find the launcher apps | Activities that answer `com.wonderhoylabs.airi.LINUX_APP`, each in a package of its own with the desktop file ID as text in its `desktop_id` asset. From Android 11, that needs a `<queries>` entry |
 | 0.2.0 | The client library     | `airi-client-<version>.aar` on each release                                                                                                                                                         |
 | 0.3.0 | List every Linux app   | For `adb` and other callers holding `android.permission.DUMP`: `content query --uri content://com.wonderhoylabs.airi.apps/apps` gives rows of `desktop_id`, `on_launcher` (1 or 0) and `name`, in that order, and `content read --uri content://com.wonderhoylabs.airi.apps/icon/<desktop file ID>` gives a PNG. There are no rows while Linux is off |
+| 0.4.0 | Minori's machines      | `airi://minori/<machine ID>/<desktop file ID>` opens an app from a machine. A launcher app for one also has the machine ID in a `machine` asset. The provider's rows gain a fourth column, `source`, after `name`: `terminal`, or `minori:<machine ID>`, and an icon takes `?source=` with the same value. Old readers keep working if they take the name as everything up to the last `, source=` |
 
 A page or tool that drives the phone over `adb`, such as [Asahi](https://github.com/wonderhoy-labs/asahi), can list
 the Linux apps that way, then show one alone with
-[Shinonome](https://github.com/wonderhoy-labs/shinonome)'s `--app airi://app/<desktop file ID>`.
+[Shinonome](https://github.com/wonderhoy-labs/shinonome)'s `--app airi://app/<desktop file ID>`, or for a machine
+`--app airi://minori/<machine ID>/<desktop file ID>` (Minori's `minori://vm/<id>/app/<desktop file ID>` also works,
+and opens the same thing through Minori).
 
 ## What has been tested
 
@@ -181,6 +212,7 @@ the Linux apps that way, then show one alone with
 | Clipboard                                | Written, but not tried yet                                                                                    |
 | Other apps opening Linux apps            | The client library's tests pass on an emulator, against Airi and a launcher app. Not with Linux behind it yet |
 | Listing apps over `adb`                  | 0.3.0 on a Pixel 10 Pro: ten rows and a 384x384 icon; Asahi's page listed them and opened Calculator alone    |
+| Minori's machines, beside the terminal     | 0.4.0 on an emulator with Minori's debug build: a demo machine and a Termux Debian listed and opened next to a terminal stand-in, typing, a machine's launcher app starting it through Minori, `minori://vm/…/app/…`, **Set up in Minori**, and the `source` column over `adb` |
 | Shown alone in a browser                 | GNOME Calculator through Shinonome's `--app airi://app/…` on a Pixel 10 Pro, filling 1920x1080                 |
 | Sound                                    | Goes through the Terminal app and not Airi. We haven't checked it                                             |
 | Pixel desktop mode and resizable windows | Should work, and we haven't tried it                                                                          |
@@ -221,6 +253,12 @@ a new window belongs to from its app ID, its X11 class or its process.
 
 The Terminal app already forwards ports from Linux to Android's loopback, so that's what Airi uses. The agent only listens on Linux's
 own loopback, and the Terminal's forwarder reaches it there. We measured that route at about 280 MB/s.
+
+A Minori machine is reached through Minori instead. Minori exports a content provider to Airi: it lists the machines,
+and opening a machine's `agent` file hands Airi one end of a socket that Minori connects to the agent in that machine,
+through its guest agent for a virtual machine or on the machine's own loopback port for a Termux userland. Airi speaks
+the same protocol over that socket, with the same handshake. Nothing is published on the phone for it, which is why
+the Terminal and Minori's machines don't get in each other's way.
 
 [docs/protocol.md](docs/protocol.md) has the details.
 
@@ -271,6 +309,11 @@ space, which keeps it out of the terminal's history. If you think it got out, ta
 
 **Traffic isn't encrypted.** It only crosses the phone's loopback, which other apps can't read without root.
 
+**Minori gets Airi's token when you tap Set up in Minori,** and only then. Airi sends it in an intent addressed to
+Minori's package, and Minori installs it in that machine. Minori only lets Airi (and `adb`) use its connection to a
+machine's agent, and the agent still asks for the token. A Termux machine's agent listens on a port of the phone's
+loopback, like the Terminal's forwarded one, so the token is what protects it there too.
+
 **During setup, the agent sits in your Downloads folder** until the command deletes it. An app with access to all your files could
 swap it in that time. If you have an app like that and don't trust it, read `install.sh` first and check the file.
 
@@ -301,6 +344,9 @@ systemctl --user status airi-agent
 
 **Airi says the helper belongs to a different install.** That happens when you reinstall Airi, because it makes a new token. Tap **Set up
 Airi in Linux again**.
+
+**A machine says Waiting for Airi.** The machine runs, but Airi's helper in it doesn't answer yet. It may still be
+starting. If it stays that way, tap **Set up again in Minori**.
 
 **An app says it quit before opening a window.** Airi shows the end of what it printed. Try running it in the terminal for the rest.
 

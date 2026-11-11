@@ -26,7 +26,7 @@ object Minori {
 		val linux: Linux.Machine get() = Linux.Machine(id)
 	}
 
-	/** Minori's machines that Airi's agent can run in. Empty without a Minori that knows Airi, which is 0.3.0 on. */
+	/** Minori's machines that Airi's agent can run in. Empty without a Minori that knows Airi, which is 0.4.0 on. */
 	fun machines(context: Context): List<Machine> = try {
 		context.contentResolver.query(MACHINES, null, null, null, null)?.use { cursor ->
 			val id = cursor.getColumnIndexOrThrow("id")
