@@ -117,7 +117,7 @@ dependencyResolutionManagement {
 and in your module:
 
 ```kotlin
-implementation("airi:client:0.2.0@aar")
+implementation("airi:client:0.3.0@aar")
 ```
 
 Then:
@@ -157,6 +157,11 @@ app that uses it.
 | 0.1.0 | Open a Linux app       | `ACTION_VIEW` on `airi://app/<desktop file ID>`, which Airi's `.viewer.ViewerActivity` takes. It sets `RESULT_OK` when the window closes normally                                                   |
 | 0.1.0 | Find the launcher apps | Activities that answer `com.wonderhoylabs.airi.LINUX_APP`, each in a package of its own with the desktop file ID as text in its `desktop_id` asset. From Android 11, that needs a `<queries>` entry |
 | 0.2.0 | The client library     | `airi-client-<version>.aar` on each release                                                                                                                                                         |
+| 0.3.0 | List every Linux app   | For `adb` and other callers holding `android.permission.DUMP`: `content query --uri content://com.wonderhoylabs.airi.apps/apps` gives rows of `desktop_id`, `on_launcher` (1 or 0) and `name`, in that order, and `content read --uri content://com.wonderhoylabs.airi.apps/icon/<desktop file ID>` gives a PNG. There are no rows while Linux is off |
+
+A page or tool that drives the phone over `adb`, such as [Asahi](https://github.com/wonderhoy-labs/asahi), can list
+the Linux apps that way, then show one alone with
+[Shinonome](https://github.com/wonderhoy-labs/shinonome)'s `--app airi://app/<desktop file ID>`.
 
 ## What has been tested
 
@@ -175,6 +180,8 @@ app that uses it.
 | A mouse                                  | Written, but not tried on a real one                                                                          |
 | Clipboard                                | Written, but not tried yet                                                                                    |
 | Other apps opening Linux apps            | The client library's tests pass on an emulator, against Airi and a launcher app. Not with Linux behind it yet |
+| Listing apps over `adb`                  | On an emulator against a stand-in agent: the rows, an icon, and a refused unknown path. Not on a phone yet    |
+| Shown alone in a browser                 | GNOME Calculator through Shinonome's `--app airi://app/…` on a Pixel 10 Pro, filling 1920x1080                 |
 | Sound                                    | Goes through the Terminal app and not Airi. We haven't checked it                                             |
 | Pixel desktop mode and resizable windows | Should work, and we haven't tried it                                                                          |
 | Video and games                          | Every frame is copied by the processor, so expect them to be slow. We haven't measured it                     |
@@ -269,6 +276,10 @@ swap it in that time. If you have an app like that and don't trust it, read `ins
 
 **Airi's viewer is open to other apps,** because the launcher apps are signed with a key of their own, so Android can't limit it to them.
 All another app can do with that is open a Linux app that's already installed.
+
+**The app list is open to `adb`.** Anything holding `android.permission.DUMP`, which means the shell user that `adb`
+runs as and the system, can read which Linux apps there are, their names and icons. Ordinary apps can't hold that
+permission.
 
 **Allowing Airi to install apps** only matters for **Add**. Android still asks you about each one, and you can turn it off afterwards. The
 apps you've added keep working.
