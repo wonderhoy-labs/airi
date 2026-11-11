@@ -53,6 +53,17 @@
 			</intent-filter>
 		</activity>
 
+		<!--
+			Lists the Linux apps for adb, so a page driving the phone, such as Asahi, can offer them. DUMP keeps it to
+			the shell user and the system: ordinary apps can't hold it.
+		-->
+		<provider
+			android:name=".apps.AppsProvider"
+			android:authorities="com.wonderhoylabs.airi.apps"
+			android:exported="true"
+			android:readPermission="android.permission.DUMP"
+			android:writePermission="android.permission.DUMP" />
+
 		<receiver
 			android:name=".launcher.InstallResultReceiver"
 			android:exported="false" />
