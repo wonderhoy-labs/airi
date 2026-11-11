@@ -100,7 +100,6 @@ fun Screen(
 					}
 				}
 			}
-			item { BrandFooter(modifier = Modifier.padding(top = 8.dp)) }
 		}
 	}
 }
