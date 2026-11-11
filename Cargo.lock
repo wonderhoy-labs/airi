@@ -19,7 +19,7 @@ dependencies = [
 
 [[package]]
 name = "airi-agent"
-version = "0.4.0"
+version = "0.4.1"
 dependencies = [
  "anyhow",
  "hmac",
@@ -37,7 +37,7 @@ dependencies = [
 
 [[package]]
 name = "airi-viewer"
-version = "0.4.0"
+version = "0.4.1"
 dependencies = [
  "jni",
  "lz4_flex",

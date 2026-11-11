@@ -4,8 +4,10 @@ use std::{
 	collections::VecDeque,
 	env, fs,
 	io::{BufRead, BufReader},
+	os::unix::{fs::MetadataExt, process::CommandExt},
 	path::PathBuf,
 	process::{Command, Stdio},
+	sync::OnceLock,
 	thread,
 };
 
@@ -44,6 +46,11 @@ pub fn client_env(state: &State) -> Vec<(String, String)> {
 	if let Some(display) = state.x_display {
 		vars.push(("DISPLAY".into(), format!(":{display}")));
 	}
+	if other_session(state)
+		&& let Some(address) = own_bus()
+	{
+		vars.push(("DBUS_SESSION_BUS_ADDRESS".into(), address));
+	}
 	let cmdline = fs::read_to_string("/proc/cmdline").unwrap_or_default();
 	let exists = |path: &str| fs::metadata(path).is_ok();
 	let gfxstream = "/usr/share/vulkan/icd.d/gfxstream_vk_icd.json";
@@ -72,6 +79,57 @@ pub fn client_env(state: &State) -> Vec<(String, String)> {
 	vars
 }
 
+/// Whether this user has another graphical session running, such as the desktop a Minori machine shows over VNC. Apps
+/// that keep one copy running, like Thunar, Xfce Terminal and Mousepad, find each other on the session bus, so on a
+/// shared bus they'd hand their windows to the copies on that other desktop, and nothing would open here.
+fn other_session(state: &State) -> bool {
+	let uid = unsafe { libc::getuid() };
+	let ours = |path: &std::path::Path| fs::metadata(path).map(|meta| meta.uid() == uid).unwrap_or(false);
+	let x11 = fs::read_dir("/tmp/.X11-unix").into_iter().flatten().flatten().any(|entry| {
+		let name = entry.file_name().to_string_lossy().into_owned();
+		let display = name.strip_prefix('X').and_then(|n| n.parse::<u32>().ok());
+		display.is_some() && display != state.x_display && ours(&entry.path())
+	});
+	let wayland =
+		env::var_os("XDG_RUNTIME_DIR").and_then(|dir| fs::read_dir(dir).ok()).into_iter().flatten().flatten().any(
+			|entry| {
+				let name = entry.file_name().to_string_lossy().into_owned();
+				name.starts_with("wayland-") && !name.ends_with(".lock") && name != state.socket_name
+			},
+		);
+	x11 || wayland
+}
+
+/// A session bus for the apps Airi starts, apart from the user's, made the first time it's needed and kept for as long as
+/// the agent runs. None if `dbus-daemon` isn't there, and then apps share the user's bus as before.
+fn own_bus() -> Option<String> {
+	static BUS: OnceLock<Option<String>> = OnceLock::new();
+	BUS.get_or_init(|| {
+		let mut command = Command::new("dbus-daemon");
+		command
+			.args(["--session", "--nofork", "--nopidfile", "--print-address=1"])
+			.stdin(Stdio::null())
+			.stdout(Stdio::piped())
+			.stderr(Stdio::null());
+		// It goes when the agent does, so restarts don't leave buses behind.
+		unsafe {
+			command.pre_exec(|| {
+				libc::prctl(libc::PR_SET_PDEATHSIG, libc::SIGTERM);
+				Ok(())
+			});
+		}
+		let mut child = command.spawn().map_err(|err| warn!(%err, "couldn't start a session bus for apps")).ok()?;
+		let mut address = String::new();
+		BufReader::new(child.stdout.take()?).read_line(&mut address).ok()?;
+		let address = address.trim().to_string();
+		info!(%address, "apps get a session bus of their own, since another desktop is running");
+		// Reap it if it ever ends.
+		thread::spawn(move || child.wait());
+		(!address.is_empty()).then_some(address)
+	})
+	.clone()
+}
+
 fn env_file() -> Option<PathBuf> {
 	env::var_os("XDG_RUNTIME_DIR").map(|dir| PathBuf::from(dir).join("airi-env"))
 }
@@ -88,7 +146,6 @@ pub fn write_env_file(state: &State) {
 /// Runs a command with this compositor's environment, for `airi-agent run`.
 pub fn exec_with_saved_env(command: &[String]) -> anyhow::Result<()> {
 	use anyhow::Context;
-	use std::os::unix::process::CommandExt;
 	let path = env_file().context("XDG_RUNTIME_DIR isn't set")?;
 	let text = fs::read_to_string(&path).context("the Airi agent isn't running")?;
 	let mut process = Command::new(&command[0]);
