@@ -8,6 +8,7 @@ import android.content.pm.PackageManager
 import android.net.Uri
 import android.provider.Settings
 import com.wonderhoylabs.airi.client.Airi
+import com.wonderhoylabs.airi.linux.Linux
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import java.io.File
@@ -40,12 +41,12 @@ object LauncherApps {
 	fun installPermissionIntent(context: Context): Intent =
 		Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES, Uri.parse("package:${context.packageName}"))
 
-	fun add(context: Context, desktopId: String, name: String, iconPng: ByteArray?) {
-		AppIcons.save(context, desktopId, name, iconPng)
-		val packageName = AppBuilder.packageFor(desktopId)
+	fun add(context: Context, linux: Linux, desktopId: String, name: String, iconPng: ByteArray?) {
+		AppIcons.save(context, linux, desktopId, name, iconPng)
+		val packageName = AppBuilder.packageFor(linux, desktopId)
 		val apk = File.createTempFile("launcher", ".apk", context.cacheDir)
 		try {
-			AppBuilder(context).build(desktopId, name, iconPng, apk)
+			AppBuilder(context).build(linux, desktopId, name, iconPng, apk)
 			val installer = context.packageManager.packageInstaller
 			val params = PackageInstaller.SessionParams(PackageInstaller.SessionParams.MODE_FULL_INSTALL).apply {
 				setAppPackageName(packageName)
@@ -73,6 +74,6 @@ object LauncherApps {
 	}
 
 	/** Android asks you to confirm this itself. */
-	fun removeIntent(desktopId: String): Intent =
-		Intent(Intent.ACTION_DELETE, Uri.parse("package:${AppBuilder.packageFor(desktopId)}"))
+	fun removeIntent(linux: Linux, desktopId: String): Intent =
+		Intent(Intent.ACTION_DELETE, Uri.parse("package:${AppBuilder.packageFor(linux, desktopId)}"))
 }

@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
-	<!-- The agent is reached through the port the Terminal app forwards to this phone's loopback. -->
+	<!-- The terminal's agent is reached through the port the Terminal app forwards to this phone's loopback. -->
 	<uses-permission android:name="android.permission.INTERNET" />
 	<uses-permission android:name="android.permission.USE_LOOPBACK_INTERFACE" />
 	<!-- Comes back from the Terminal app after opening it to start Linux. -->
@@ -12,6 +12,8 @@
 
 	<queries>
 		<package android:name="com.android.virtualization.terminal" />
+		<!-- Minori, whose machines can run Airi's agent too, and which connects Airi to them. -->
+		<package android:name="com.wonderhoylabs.minori" />
 		<intent>
 			<action android:name="com.wonderhoylabs.airi.LINUX_APP" />
 		</intent>
@@ -50,6 +52,8 @@
 				<action android:name="android.intent.action.VIEW" />
 				<category android:name="android.intent.category.DEFAULT" />
 				<data android:scheme="airi" android:host="app" />
+				<!-- airi://minori/<machine>/<desktop id>: an app from one of Minori's machines. -->
+				<data android:scheme="airi" android:host="minori" />
 			</intent-filter>
 		</activity>
 

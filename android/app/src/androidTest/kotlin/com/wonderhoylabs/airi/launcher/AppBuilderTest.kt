@@ -5,8 +5,10 @@ import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.Color
 import androidx.test.platform.app.InstrumentationRegistry
+import com.wonderhoylabs.airi.linux.Linux
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.io.ByteArrayOutputStream
@@ -22,9 +24,9 @@ class AppBuilderTest {
 		return ByteArrayOutputStream().also { bitmap.compress(Bitmap.CompressFormat.PNG, 100, it) }.toByteArray()
 	}
 
-	private fun build(id: String, name: String, icon: ByteArray?): File {
+	private fun build(id: String, name: String, icon: ByteArray?, linux: Linux = Linux.Terminal): File {
 		val apk = File.createTempFile("test", ".apk", context.cacheDir)
-		AppBuilder(context).build(id, name, icon, apk)
+		AppBuilder(context).build(linux, id, name, icon, apk)
 		return apk
 	}
 
@@ -38,7 +40,7 @@ class AppBuilderTest {
 		val apk = build("org.example.Thing.desktop", "Thing 計算", null)
 		val info = context.packageManager.getPackageArchiveInfo(apk.path, PackageManager.GET_SIGNING_CERTIFICATES)
 		assertNotNull(info)
-		assertEquals(AppBuilder.packageFor("org.example.Thing.desktop"), info!!.packageName)
+		assertEquals(AppBuilder.packageFor(Linux.Terminal, "org.example.Thing.desktop"), info!!.packageName)
 		info.applicationInfo!!.sourceDir = apk.path
 		info.applicationInfo!!.publicSourceDir = apk.path
 		assertEquals("Thing 計算", info.applicationInfo!!.loadLabel(context.packageManager).toString())
@@ -50,6 +52,17 @@ class AppBuilderTest {
 		val apk = build("org.example.Thing.desktop", "Thing", null)
 		val id = ZipFile(apk).use { zip -> zip.getInputStream(zip.getEntry("assets/desktop_id")).readBytes() }
 		assertEquals("org.example.Thing.desktop", String(id))
+	}
+
+	@Test
+	fun aMachinesAppSaysWhichMachine() {
+		val terminal = build("org.example.Thing.desktop", "Thing", null)
+		ZipFile(terminal).use { zip -> assertNull(zip.getEntry("assets/machine")) }
+		val apk = build("org.example.Thing.desktop", "Thing", null, Linux.Machine("vm-1"))
+		val machine = ZipFile(apk).use { zip -> zip.getInputStream(zip.getEntry("assets/machine")).readBytes() }
+		assertEquals("vm-1", String(machine))
+		val info = context.packageManager.getPackageArchiveInfo(apk.path, 0)
+		assertEquals(AppBuilder.packageFor(Linux.Machine("vm-1"), "org.example.Thing.desktop"), info!!.packageName)
 	}
 
 	@Test
@@ -74,9 +87,9 @@ class AppBuilderTest {
 
 	@Test
 	fun packageNamesAreValidAndStable() {
-		val name = AppBuilder.packageFor("Some App (Beta) 2.desktop")
-		assertEquals(name, AppBuilder.packageFor("Some App (Beta) 2.desktop"))
+		val name = AppBuilder.packageFor(Linux.Terminal, "Some App (Beta) 2.desktop")
+		assertEquals(name, AppBuilder.packageFor(Linux.Terminal, "Some App (Beta) 2.desktop"))
 		assertTrue(name, name.matches(Regex("[a-z][a-z0-9_]*(\\.[a-z][a-z0-9_]*)+")))
-		assertTrue(name != AppBuilder.packageFor("Some App Beta 2.desktop"))
+		assertTrue(name != AppBuilder.packageFor(Linux.Terminal, "Some App Beta 2.desktop"))
 	}
 }

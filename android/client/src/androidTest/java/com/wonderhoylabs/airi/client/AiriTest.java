@@ -32,6 +32,24 @@ public final class AiriTest {
 	}
 
 	@Test
+	public void minoriLinksRoundTrip() {
+		Uri uri = Airi.minoriAppUri("0b6f2c1e-1111-4a4a-9c9c-0123456789ab", "foot.desktop");
+		assertEquals("airi://minori/0b6f2c1e-1111-4a4a-9c9c-0123456789ab/foot.desktop", uri.toString());
+		assertEquals("foot.desktop", Airi.desktopId(uri));
+		assertEquals("0b6f2c1e-1111-4a4a-9c9c-0123456789ab", Airi.minoriMachine(uri));
+		assertNull(Airi.minoriMachine(Airi.appUri("foot.desktop")));
+		assertNull(Airi.desktopId(Uri.parse("airi://minori/foot.desktop")));
+		assertNull(Airi.minoriMachine(Uri.parse("airi://minori/a/b/c")));
+	}
+
+	@Test
+	public void openMinoriIntentGoesToTheViewer() {
+		Intent intent = Airi.openMinoriIntent("vm", "foot.desktop");
+		assertEquals(Airi.PACKAGE, intent.getComponent().getPackageName());
+		assertEquals("vm", Airi.minoriMachine(intent.getData()));
+	}
+
+	@Test
 	public void otherLinksAreNotApps() {
 		assertNull(Airi.desktopId(null));
 		assertNull(Airi.desktopId(Uri.parse("https://app/org.gnome.Calculator.desktop")));
@@ -56,6 +74,7 @@ public final class AiriTest {
 		// Any app can also open the link without naming Airi.
 		Intent link = new Intent(Intent.ACTION_VIEW, Airi.appUri("org.gnome.Calculator.desktop"));
 		assertNotNull(packages.resolveActivity(link, 0));
+		assertTrue(Airi.canOpenMinoriApps(context));
 	}
 
 	@Test
@@ -69,7 +88,7 @@ public final class AiriTest {
 			assertTrue(app.packageName.startsWith("com.wonderhoylabs.airi.linux."));
 			assertNotNull(packages.resolveActivity(app.launchIntent(), 0));
 			assertNotNull(app.loadIcon(context));
-			assertEquals(app.packageName, Airi.launcherApp(context, app.desktopId).packageName);
+			assertEquals(app.packageName, Airi.launcherApp(context, app.machineId, app.desktopId).packageName);
 		}
 		assertNull(Airi.launcherApp(context, "not.an.app.desktop"));
 	}

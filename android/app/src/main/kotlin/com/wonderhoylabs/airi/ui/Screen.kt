@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -42,17 +43,34 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.wonderhoylabs.airi.R
+import com.wonderhoylabs.airi.linux.Linux
+
+/** What the screen can ask for. A source's actions act on that one Linux. */
+interface ScreenActions {
+	fun setUp()
+
+	fun openTerminal()
+
+	fun setUpInMinori(source: Source)
+
+	fun startMachine(source: Source)
+
+	fun openApp(app: LinuxApp)
+
+	fun add(app: LinuxApp)
+
+	fun remove(app: LinuxApp)
+}
 
 @Composable
-fun Screen(
-	state: UiState,
-	onSetUp: () -> Unit,
-	onOpenTerminal: () -> Unit,
-	onOpenApp: (LinuxApp) -> Unit,
-	onAdd: (LinuxApp) -> Unit,
-	onRemove: (LinuxApp) -> Unit,
-) {
+fun Screen(state: UiState, actions: ScreenActions) {
 	val insets = WindowInsets.safeDrawing.asPaddingValues()
+	// Without the Terminal app, there's nothing to say about it if Minori's machines are here instead.
+	val sources = state.sources.filter {
+		it.linux != Linux.Terminal || it.stage != Stage.NO_TERMINAL ||
+			state.sources.size == 1
+	}
+	val titled = sources.size > 1
 	Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
 		LazyColumn(
 			contentPadding = PaddingValues(
@@ -70,36 +88,106 @@ fun Screen(
 					modifier = Modifier.padding(bottom = 8.dp),
 				)
 			}
-			when (state.stage) {
-				Stage.CHECKING -> item { Waiting(stringResource(R.string.status_checking)) }
+			for (source in sources) {
+				if (titled || source.stage == Stage.READY) {
+					item(key = "title-${source.linux.key}") { SourceTitle(source) }
+				}
+				sourceItems(source, actions)
+			}
+		}
+	}
+}
 
-				Stage.NO_TERMINAL -> item { NoTerminal() }
+private fun LazyListScope.sourceItems(source: Source, actions: ScreenActions) {
+	val name = source.name
+	when (source.stage) {
+		Stage.CHECKING -> item(key = source.linux.key) { Waiting(stringResource(R.string.status_checking)) }
 
-				Stage.SETUP -> item { SetUp(again = false, onSetUp) }
+		Stage.UPDATING -> item(key = source.linux.key) { Waiting(stringResource(R.string.status_updating)) }
 
-				Stage.SETUP_AGAIN -> item { SetUp(again = true, onSetUp) }
+		Stage.NO_TERMINAL -> item(key = source.linux.key) { NoTerminal() }
 
-				Stage.LINUX_OFF -> item { LinuxOff(onOpenTerminal, onSetUp) }
+		Stage.SETUP -> item(key = source.linux.key) { SetUp(again = false, actions::setUp) }
 
-				Stage.UPDATING -> item { Waiting(stringResource(R.string.status_updating)) }
+		Stage.SETUP_AGAIN -> item(key = source.linux.key) {
+			if (source.linux == Linux.Terminal) {
+				SetUp(again = true, actions::setUp)
+			} else {
+				MachineCard(
+					stringResource(R.string.machine_setup_again_title, name),
+					stringResource(R.string.machine_setup_again_body, name),
+					stringResource(R.string.machine_set_up_again),
+				) { actions.setUpInMinori(source) }
+			}
+		}
 
-				Stage.READY -> {
-					if (state.apps.isEmpty()) {
-						item { NoApps() }
-					} else {
-						item {
-							Text(
-								stringResource(R.string.apps_title),
-								style = MaterialTheme.typography.titleMedium,
-								modifier = Modifier.padding(top = 8.dp),
-							)
-						}
-						items(state.apps, key = LinuxApp::id) { app ->
-							AppRow(app, onOpenApp, onAdd, onRemove)
-						}
-					}
+		Stage.LINUX_OFF -> item(key = source.linux.key) { LinuxOff(actions::openTerminal, actions::setUp) }
+
+		Stage.NOT_SET_UP -> item(key = source.linux.key) {
+			MachineCard(
+				stringResource(R.string.machine_setup_title, name),
+				stringResource(R.string.machine_setup_body, name),
+				stringResource(R.string.machine_set_up),
+			) { actions.setUpInMinori(source) }
+		}
+
+		Stage.STOPPED -> item(key = source.linux.key) {
+			MachineCard(
+				stringResource(R.string.machine_off_title, name),
+				stringResource(R.string.machine_off_body),
+				stringResource(R.string.machine_start),
+			) { actions.startMachine(source) }
+		}
+
+		Stage.STARTING -> item(key = source.linux.key) { Waiting(stringResource(R.string.machine_starting, name)) }
+
+		Stage.NOT_ANSWERING -> item(key = source.linux.key) {
+			MachineCard(
+				stringResource(R.string.machine_not_answering_title, name),
+				stringResource(R.string.machine_not_answering_body),
+				stringResource(R.string.machine_set_up_again),
+				outlined = true,
+			) { actions.setUpInMinori(source) }
+		}
+
+		Stage.READY -> {
+			if (source.apps.isEmpty()) {
+				item(key = source.linux.key) { NoApps() }
+			} else {
+				items(source.apps, key = LinuxApp::key) { app ->
+					AppRow(app, actions::openApp, actions::add, actions::remove)
 				}
 			}
+		}
+	}
+}
+
+@Composable
+private fun SourceTitle(source: Source) {
+	Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 8.dp)) {
+		Column {
+			Text(
+				if (source.linux == Linux.Terminal) stringResource(R.string.source_terminal) else source.name,
+				style = MaterialTheme.typography.titleMedium,
+			)
+			Text(
+				stringResource(if (source.linux == Linux.Terminal) R.string.source_terminal_detail else R.string.source_minori),
+				style = MaterialTheme.typography.bodySmall,
+				color = MaterialTheme.colorScheme.onSurfaceVariant,
+			)
+		}
+	}
+}
+
+@Composable
+private fun MachineCard(title: String, body: String, button: String, outlined: Boolean = false, onClick: () -> Unit) {
+	InfoCard {
+		Text(title, style = MaterialTheme.typography.titleMedium)
+		Text(body, style = MaterialTheme.typography.bodyMedium)
+		if (outlined) {
+			OutlinedButton(onClick = onClick, modifier = Modifier.fillMaxWidth()) { Text(button) }
+		} else {
+			Button(onClick = onClick, modifier = Modifier.fillMaxWidth()) { Text(button) }
 		}
 	}
 }

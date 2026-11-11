@@ -2,13 +2,11 @@ package com.wonderhoylabs.airi.agent
 
 import java.io.ByteArrayOutputStream
 import java.io.Closeable
-import java.io.DataInputStream
 import java.io.EOFException
 import java.io.IOException
-import java.net.InetSocketAddress
+import java.net.SocketTimeoutException
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
-import java.nio.channels.SocketChannel
 import java.security.MessageDigest
 import java.security.SecureRandom
 import java.util.concurrent.LinkedBlockingQueue
@@ -60,11 +58,8 @@ class Message(val type: Int, val body: ByteBuffer) {
  * One connection to the agent. Reads block, so they belong on their own thread, but sending only
  * joins a queue and is safe anywhere.
  */
-class AgentConnection private constructor(
-	private val channel: SocketChannel,
-	val agentVersion: String,
-	val protocol: Int,
-) : Closeable {
+class AgentConnection private constructor(private val channel: Link, val agentVersion: String, val protocol: Int) :
+	Closeable {
 	private val header = ByteBuffer.allocateDirect(5).order(ByteOrder.LITTLE_ENDIAN)
 	private var body = ByteBuffer.allocateDirect(1 shl 20).order(ByteOrder.LITTLE_ENDIAN)
 	private val outgoing = LinkedBlockingQueue<ByteBuffer>()
@@ -116,7 +111,7 @@ class AgentConnection private constructor(
 		private const val TIMEOUT_MS = 3000
 		private const val MAX_MESSAGE = 128 * 1024 * 1024
 
-		private fun read(channel: SocketChannel, header: ByteBuffer, body: (Int) -> ByteBuffer): Message {
+		private fun read(channel: Link, header: ByteBuffer, body: (Int) -> ByteBuffer): Message {
 			header.clear()
 			readFully(channel, header)
 			header.flip()
@@ -129,7 +124,7 @@ class AgentConnection private constructor(
 			return Message(type, buffer)
 		}
 
-		private fun readFully(channel: SocketChannel, buffer: ByteBuffer) {
+		private fun readFully(channel: Link, buffer: ByteBuffer) {
 			while (buffer.hasRemaining()) {
 				if (channel.read(buffer) < 0) throw EOFException()
 			}
@@ -143,49 +138,66 @@ class AgentConnection private constructor(
 			return mac.doFinal(clientNonce)
 		}
 
-		/** Connects and proves to each other that both ends hold the token, without sending it. */
-		fun connect(address: InetSocketAddress, token: ByteArray): AgentConnection {
-			val channel = SocketChannel.open()
+		/**
+		 * Proves to each other over [link] that both ends hold the token, without sending it. Takes over the link,
+		 * and closes it if that fails.
+		 */
+		fun connect(link: Link, token: ByteArray): AgentConnection {
+			// Android's terminal accepts on a forwarded port even with nothing behind it, so a read here can fail or
+			// hang, and only a timeout tells those apart from a slow agent. Closing the link is what ends a hung read.
+			val done = java.util.concurrent.CountDownLatch(1)
+			val timedOut = java.util.concurrent.atomic.AtomicBoolean()
+			val watchdog = thread(name = "airi-handshake", isDaemon = true) {
+				if (!done.await(TIMEOUT_MS.toLong(), java.util.concurrent.TimeUnit.MILLISECONDS)) {
+					timedOut.set(true)
+					runCatching { link.close() }
+				}
+			}
 			try {
-				val socket = channel.socket()
-				socket.tcpNoDelay = true
-				socket.connect(address, TIMEOUT_MS)
-				// The Terminal app accepts on a forwarded port even with nothing behind it, so a read
-				// here can fail or hang, and only a timeout tells those apart from a slow agent.
-				socket.soTimeout = TIMEOUT_MS
-				val input = DataInputStream(socket.getInputStream())
-				val hello = ByteArray(38)
-				input.readFully(hello)
-				if (String(hello, 0, 4) != "AIRI") throw NotAgentException()
-				val serverNonce = hello.copyOfRange(6, 38)
+				val hello = ByteBuffer.allocate(38)
+				readFully(link, hello)
+				val helloBytes = hello.array()
+				if (String(helloBytes, 0, 4) != "AIRI") throw NotAgentException()
+				val serverNonce = helloBytes.copyOfRange(6, 38)
 				val clientNonce = ByteArray(32).also(SecureRandom()::nextBytes)
 
-				val reply = clientNonce + proof(token, "airi client", serverNonce, clientNonce)
-				channel.write(ByteBuffer.wrap(reply))
-				val answer = ByteArray(32)
+				val reply = ByteBuffer.wrap(clientNonce + proof(token, "airi client", serverNonce, clientNonce))
+				while (reply.hasRemaining()) link.write(reply)
+				val answer = ByteBuffer.allocate(32)
 				try {
-					input.readFully(answer)
-				} catch (_: EOFException) {
+					readFully(link, answer)
+				} catch (error: EOFException) {
+					if (timedOut.get()) throw error
 					throw WrongTokenException()
 				}
 				val expected = proof(token, "airi server", serverNonce, clientNonce)
-				if (!MessageDigest.isEqual(answer, expected)) throw WrongTokenException()
-				socket.soTimeout = 0
+				if (!MessageDigest.isEqual(answer.array(), expected)) throw WrongTokenException()
 
 				val infoHeader = ByteBuffer.allocateDirect(5).order(ByteOrder.LITTLE_ENDIAN)
 				val infoBody = ByteBuffer.allocateDirect(4096).order(ByteOrder.LITTLE_ENDIAN)
-				val info = read(channel, infoHeader) { size ->
+				val info = read(link, infoHeader) { size ->
 					if (size > infoBody.capacity()) throw NotAgentException()
 					infoBody.clear().limit(size)
 					infoBody
 				}
 				if (info.type != Protocol.INFO) throw NotAgentException()
 				val version = info.string()
-				return AgentConnection(channel, version, info.body.getInt())
+				done.countDown()
+				watchdog.join()
+				if (timedOut.get()) throw SocketTimeoutException("The agent took too long to answer")
+				return AgentConnection(link, version, info.body.getInt())
 			} catch (e: Throwable) {
-				runCatching { channel.close() }
+				done.countDown()
+				runCatching { link.close() }
+				if (timedOut.get() && e is IOException && e !is SocketTimeoutException) {
+					throw SocketTimeoutException("The agent took too long to answer")
+				}
 				throw e
 			}
 		}
+
+		/** Connects to an agent on TCP, the way Android's terminal forwards it. */
+		fun connect(address: java.net.InetSocketAddress, token: ByteArray): AgentConnection =
+			connect(TcpLink.connect(address, TIMEOUT_MS), token)
 	}
 }

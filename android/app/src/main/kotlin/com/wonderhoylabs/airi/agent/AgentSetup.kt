@@ -5,6 +5,8 @@ import android.content.Context
 import android.content.Intent
 import android.provider.MediaStore
 import com.wonderhoylabs.airi.BuildConfig
+import com.wonderhoylabs.airi.linux.Linux
+import com.wonderhoylabs.airi.linux.Minori
 import java.io.File
 import java.io.IOException
 import java.net.InetSocketAddress
@@ -51,8 +53,16 @@ object AgentSetup {
 
 	fun token(context: Context): ByteArray = hexToken(context).hexToByteArray()
 
-	fun connect(context: Context): AgentConnection = AgentConnection.connect(address(context), token(context)).also {
-		context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().putBoolean(CONNECTED_BEFORE, true).apply()
+	/** Hands the token to Minori, which installs the agent in one of its machines with it. */
+	fun minoriSetUpIntent(context: Context, machine: String) = Minori.setUpIntent(machine, hexToken(context))
+
+	/** Connects to the agent in [linux]: on the terminal's forwarded port, or through Minori for one of its machines. */
+	fun connect(context: Context, linux: Linux): AgentConnection = when (linux) {
+		Linux.Terminal -> AgentConnection.connect(address(context), token(context)).also {
+			context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().putBoolean(CONNECTED_BEFORE, true).apply()
+		}
+
+		is Linux.Machine -> AgentConnection.connect(SocketLink(Minori.openAgent(context, linux.id)), token(context))
 	}
 
 	/** Tells someone who only needs to start Linux from someone who hasn't set Airi up yet. */

@@ -24,7 +24,23 @@
 	<string name="linux_off_body">Start it and your apps show up here. Opening one from your launcher starts it too.</string>
 	<string name="linux_off_set_up_again">Set up Airi in Linux again</string>
 
-	<string name="apps_title">Apps in Linux</string>
+	<string name="source_terminal">Android\'s terminal</string>
+	<string name="source_terminal_detail">The Linux built into Android</string>
+	<string name="source_minori">A machine in Minori</string>
+
+	<string name="machine_setup_title">Show %1$s\'s apps</string>
+	<string name="machine_setup_body">Minori installs Airi\'s helper in %1$s, and Airi gives it the key. Minori asks before it does anything.</string>
+	<string name="machine_set_up">Set up in Minori</string>
+	<string name="machine_setup_again_title">Set up Airi in %1$s again</string>
+	<string name="machine_setup_again_body">The helper in %1$s was set up by a different install of Airi, so it won\'t talk to this one. Minori can set it up again.</string>
+	<string name="machine_set_up_again">Set up again in Minori</string>
+	<string name="machine_off_title">%1$s isn\'t running</string>
+	<string name="machine_off_body">Start it and its apps show up here. Opening one from your launcher starts it too.</string>
+	<string name="machine_start">Start</string>
+	<string name="machine_starting">Starting %1$s…</string>
+	<string name="machine_not_answering_title">Waiting for Airi in %1$s</string>
+	<string name="machine_not_answering_body">It may still be starting. If its apps don\'t show up, set Airi up again from Minori.</string>
+	<string name="minori_too_old">Update Minori to 0.4.0 or later to use its machines with Airi.</string>
 	<string name="no_apps_title">No apps yet</string>
 	<string name="no_apps_body">Install a graphical app in the terminal and it shows up here. For example: sudo apt install gnome-calculator</string>
 
@@ -36,6 +52,9 @@
 
 	<string name="viewer_opening">Opening %1$s…</string>
 	<string name="viewer_starting_linux">Starting Linux…</string>
+	<string name="viewer_starting_machine">Starting %1$s…</string>
+	<string name="viewer_no_machine">Couldn\'t reach Airi in that machine. Open Minori to check that it\'s there and Airi is set up in it.</string>
+	<string name="viewer_machine_wrong_token">The helper in %1$s belongs to a different install of Airi. Open Airi to set it up again.</string>
 	<string name="viewer_no_linux">Couldn\'t reach Linux. Open Airi to check that it\'s set up.</string>
 	<string name="viewer_wrong_token">The helper in Linux belongs to a different install of Airi. Open Airi to set it up again.</string>
 	<string name="viewer_old_agent">The helper in Linux is out of date. Open Airi to update it.</string>

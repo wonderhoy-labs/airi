@@ -4,8 +4,24 @@ This is how the Android app and the agent in Linux talk. Both ends ship together
 an agent of a different version, so this can change between releases. `PROTOCOL_VERSION` changes when it
 does.
 
-The agent listens on TCP port 47821 on Linux's loopback, and the Terminal app forwards that port to
-Android's loopback. All numbers are little-endian, and strings are a `u32` byte length and then UTF-8.
+All numbers are little-endian, and strings are a `u32` byte length and then UTF-8.
+
+## Reaching the agent
+
+The protocol is the same over each way of reaching an agent, and the app keeps one connection per Linux.
+
+- **Android's terminal.** The agent listens on TCP port 47821 on Linux's loopback, and the Terminal app forwards
+  that port to Android's loopback.
+- **A Minori machine.** Minori 0.4.0 and later export `content://com.wonderhoylabs.minori.airi`, which only Airi and
+  `adb`'s shell may use. Querying `machines` gives rows of `id`, `state` (`stopped`, `starting`, `running`,
+  `stopping` or `error`), `airi` (1 once the agent is installed) and `name`. Opening `machines/<id>/agent` with mode
+  `rw` gives a stream socket that Minori connects to the agent in that running machine: port 47821 in a virtual
+  machine, through Minori's guest agent, or the machine's own port on the phone's loopback for a Termux userland
+  (`airi-agent serve --port <port>`, started by Minori's `minori-airi` loop). It fails with `FileNotFoundException`
+  while the machine is stopped or the agent doesn't answer. The handshake below runs over that socket unchanged.
+  The intent action `com.wonderhoylabs.minori.action.START_FOR_AIRI` with the extra `machine` starts a stopped
+  machine, and `com.wonderhoylabs.minori.action.SET_UP_AIRI` with `machine` and `token` opens Minori's setup for
+  it. Minori's docs/airi.md is its side of this.
 
 ## Handshake
 

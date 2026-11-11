@@ -13,7 +13,8 @@ import java.nio.charset.StandardCharsets;
 /**
  * Opens a Linux app in Airi. This is the only code in the apps Airi makes.
  *
- * <p>The link is the same one the client library's {@code Airi.openIntent} makes. It's written out here so the apps
+ * <p>The link is the same one the client library's {@code Airi.openIntent} makes, or {@code Airi.openMinoriIntent}
+ * for an app from one of Minori's machines, whose ID is in the {@code machine} asset. It's written out here so the apps
  * carry no library code.
  *
  * <p>It stays underneath Airi's window instead of finishing, because Android names a task in Recents
@@ -33,15 +34,36 @@ public final class LaunchActivity extends Activity {
 	}
 
 	private void open() {
-		try (InputStream in = getAssets().open("desktop_id")) {
-			String desktopId = new String(in.readAllBytes(), StandardCharsets.UTF_8).trim();
-			Intent intent = new Intent(Intent.ACTION_VIEW, new Uri.Builder()
-					.scheme("airi").authority("app").appendPath(desktopId).build());
+		try {
+			String desktopId = asset("desktop_id");
+			String machine = machine();
+			Uri.Builder link = new Uri.Builder().scheme("airi");
+			if (machine == null) {
+				link.authority("app").appendPath(desktopId);
+			} else {
+				link.authority("minori").appendPath(machine).appendPath(desktopId);
+			}
+			Intent intent = new Intent(Intent.ACTION_VIEW, link.build());
 			intent.setClassName(AIRI, AIRI + ".viewer.ViewerActivity");
 			startActivityForResult(intent, VIEWER);
 		} catch (IOException | ActivityNotFoundException e) {
 			Toast.makeText(this, "This app needs Airi. Install it, then try again.", Toast.LENGTH_LONG).show();
 			finish();
+		}
+	}
+
+	private String asset(String name) throws IOException {
+		try (InputStream in = getAssets().open(name)) {
+			return new String(in.readAllBytes(), StandardCharsets.UTF_8).trim();
+		}
+	}
+
+	/** The Minori machine the app is in. Apps for Android's terminal have no such asset. */
+	private String machine() {
+		try {
+			return asset("machine");
+		} catch (IOException e) {
+			return null;
 		}
 	}
 

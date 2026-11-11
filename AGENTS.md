@@ -9,7 +9,9 @@ to Airi.
 Linux apps from Android's Terminal on the Android launcher, each in its own window. `airi-agent` is a Smithay
 compositor inside the Terminal's Linux VM, reached on TCP 47821 through the Terminal's port forward. The app shows
 each Linux window with `airi-viewer`, and **Add** builds a real launcher app (about 11 KB, from `android/stub`) for
-each Linux app; **Launch** opens one without adding it. Named for Momoi Airi of MORE MORE JUMP!
+each Linux app; **Launch** opens one without adding it. Airi also reaches Linux in Minori's machines, through a
+content provider Minori exports to it (`linux/Minori.kt`), never through a phone port, so both work at once. Named
+for Momoi Airi of MORE MORE JUMP!
 
 ## Layout
 
@@ -45,6 +47,10 @@ the NDK's clang, and Clippy runs the same way:
 - **The emulator can't run Linux.** Test the app against the phone's agent: `adb -s <phone> forward tcp:47821
   tcp:47821`, `adb -s <emulator> reverse tcp:47821 tcp:47821`, and a `token=` line in the debug build's
   `dev.properties`. Start the emulator with `-crash-report-mode never`, or a crash consent dialog blocks it.
+- **Test Minori's machines on the emulator** with a debug Minori, its demo backend pointed at a `minori-agent --tcp`
+  in a Debian arm64 container that also runs `airi-agent serve` (`--es dev_guest_agent 127.0.0.1:5741` and `adb
+  reverse tcp:5741 tcp:5741`), and a second container for the Terminal on 47821. Termux machines need Termux's GitHub
+  or F-Droid build, which only an emulator has here: the maintainer's phone has Google Play's.
 - Turning on Install unknown apps on the real phone is for the maintainer to do. Clean up test leftovers.
 - **The launch contract is public.** Other apps use `airi://app/<desktop file ID>`, the `LINUX_APP` action and the
   `desktop_id` asset, through `android/client/` or directly, so keep them working and list what changes in the

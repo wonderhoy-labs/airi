@@ -1,5 +1,6 @@
 package com.wonderhoylabs.airi.ui
 
+import android.content.ActivityNotFoundException
 import android.content.ClipData
 import android.content.ClipDescription
 import android.content.ClipboardManager
@@ -16,9 +17,10 @@ import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import com.wonderhoylabs.airi.R
 import com.wonderhoylabs.airi.agent.AgentSetup
-import com.wonderhoylabs.airi.client.Airi
 import com.wonderhoylabs.airi.launcher.AppBuilder
 import com.wonderhoylabs.airi.launcher.LauncherApps
+import com.wonderhoylabs.airi.linux.Linux
+import com.wonderhoylabs.airi.linux.Minori
 import com.wonderhoylabs.airi.viewer.ViewerActivity
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -27,6 +29,36 @@ import kotlinx.coroutines.withContext
 class MainActivity : ComponentActivity() {
 	private lateinit var model: AppModel
 
+	private val actions = object : ScreenActions {
+		override fun setUp() = this@MainActivity.setUp()
+
+		override fun openTerminal() = this@MainActivity.openTerminal()
+
+		override fun setUpInMinori(source: Source) {
+			val machine = source.linux as? Linux.Machine ?: return
+			startMinori(AgentSetup.minoriSetUpIntent(this@MainActivity, machine.id))
+		}
+
+		override fun startMachine(source: Source) {
+			val machine = source.linux as? Linux.Machine ?: return
+			startMinori(Minori.startIntent(machine.id))
+		}
+
+		override fun openApp(app: LinuxApp) = this@MainActivity.openApp(app)
+
+		override fun add(app: LinuxApp) = addToLauncher(app)
+
+		override fun remove(app: LinuxApp) = startActivity(LauncherApps.removeIntent(app.linux, app.id))
+	}
+
+	private fun startMinori(intent: Intent) {
+		try {
+			startActivity(intent)
+		} catch (_: ActivityNotFoundException) {
+			Toast.makeText(this, R.string.minori_too_old, Toast.LENGTH_LONG).show()
+		}
+	}
+
 	override fun onCreate(savedInstanceState: Bundle?) {
 		super.onCreate(savedInstanceState)
 		enableEdgeToEdge()
@@ -34,14 +66,7 @@ class MainActivity : ComponentActivity() {
 		setContent {
 			AiriTheme {
 				val state = collectState()
-				Screen(
-					state = state,
-					onSetUp = ::setUp,
-					onOpenTerminal = ::openTerminal,
-					onOpenApp = ::openApp,
-					onAdd = ::addToLauncher,
-					onRemove = { startActivity(LauncherApps.removeIntent(it.id)) },
-				)
+				Screen(state = state, actions = actions)
 			}
 		}
 		lifecycleScope.launch {
@@ -104,13 +129,13 @@ class MainActivity : ComponentActivity() {
 
 	private fun openApp(app: LinuxApp) {
 		// Go through its launcher entry if it has one, so that there's only ever one task for it.
-		val entry = packageManager.getLaunchIntentForPackage(AppBuilder.packageFor(app.id))
+		val entry = packageManager.getLaunchIntentForPackage(AppBuilder.packageFor(app.linux, app.id))
 		if (entry != null) {
 			startActivity(entry)
 			return
 		}
 		startActivity(
-			Intent(Intent.ACTION_VIEW, Airi.appUri(app.id), this, ViewerActivity::class.java)
+			Intent(Intent.ACTION_VIEW, app.linux.appUri(app.id), this, ViewerActivity::class.java)
 				.addFlags(Intent.FLAG_ACTIVITY_NEW_DOCUMENT),
 		)
 	}
@@ -121,12 +146,12 @@ class MainActivity : ComponentActivity() {
 			startActivity(LauncherApps.installPermissionIntent(this))
 			return
 		}
-		model.setAdding(app.id, true)
+		model.setAdding(app, true)
 		lifecycleScope.launch {
 			try {
-				withContext(Dispatchers.IO) { LauncherApps.add(this@MainActivity, app.id, app.name, app.iconPng) }
+				withContext(Dispatchers.IO) { LauncherApps.add(this@MainActivity, app.linux, app.id, app.name, app.iconPng) }
 			} catch (e: Exception) {
-				model.setAdding(app.id, false)
+				model.setAdding(app, false)
 				Toast.makeText(this@MainActivity, e.message ?: getString(R.string.add_failed), Toast.LENGTH_LONG).show()
 			}
 		}
