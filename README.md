@@ -213,6 +213,7 @@ and opens the same thing through Minori).
 | Other apps opening Linux apps            | The client library's tests pass on an emulator, against Airi and a launcher app. Not with Linux behind it yet |
 | Listing apps over `adb`                  | 0.3.0 on a Pixel 10 Pro: ten rows and a 384x384 icon; Asahi's page listed them and opened Calculator alone    |
 | Minori's machines, beside the terminal     | 0.4.0 on an emulator with Minori's debug build: a demo machine and a Termux Debian listed and opened next to a terminal stand-in, typing, a machine's launcher app starting it through Minori, `minori://vm/…/app/…`, **Set up in Minori**, and the `source` column over `adb` |
+| Apps beside a machine's own desktop       | 0.4.1's agent in an Xfce machine on a Pixel 10 Pro while Minori's VNC desktop ran Thunar's daemon: Thunar opened its own window in Airi on a session bus of its own. Firefox ESR opened, drew and answered clicks when shown alone through Asahi |
 | Minori's machines on a phone              | 0.4.0 release build on a Pixel 10 Pro with Minori 0.4.0: the terminal's ten apps and an Xfce VM's eleven listed together, Set up in Minori installing the helper in Xfce, Mousepad from Xfce and Calculator from the terminal open at once, and the terminal's launcher apps from 0.3.0 still found |
 | Shown alone in a browser                 | GNOME Calculator through Shinonome's `--app airi://app/…` on a Pixel 10 Pro, filling 1920x1080                 |
 | Sound                                    | Goes through the Terminal app and not Airi. We haven't checked it                                             |
@@ -372,6 +373,8 @@ an app with the same key. Tap **Remove**, then **Add**. An app left over from be
 - A window that opens while Airi is in the background only appears when you next switch to a Linux app. Android doesn't let apps in the
   background open windows.
 - Not every entry in the list is a real app, and Airi can't always tell.
+- In a Minori machine that also runs its own desktop, an app open there, such as Firefox, is a separate copy from the one Airi opens. Firefox
+  won't run twice on one profile, so close it on the desktop first, or Firefox says it's already running.
 - Still untested: other phones, Android 15 and 16, tablets, a real mouse or keyboard, the clipboard, sound, desktop mode, and battery drain.
 
 ## Development
