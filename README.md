@@ -213,6 +213,7 @@ and opens the same thing through Minori).
 | Other apps opening Linux apps            | The client library's tests pass on an emulator, against Airi and a launcher app. Not with Linux behind it yet |
 | Listing apps over `adb`                  | 0.3.0 on a Pixel 10 Pro: ten rows and a 384x384 icon; Asahi's page listed them and opened Calculator alone    |
 | Minori's machines, beside the terminal     | 0.4.0 on an emulator with Minori's debug build: a demo machine and a Termux Debian listed and opened next to a terminal stand-in, typing, a machine's launcher app starting it through Minori, `minori://vm/…/app/…`, **Set up in Minori**, and the `source` column over `adb` |
+| Minori's machines on a phone              | 0.4.0 release build on a Pixel 10 Pro with Minori 0.4.0: the terminal's ten apps and an Xfce VM's eleven listed together, Set up in Minori installing the helper in Xfce, Mousepad from Xfce and Calculator from the terminal open at once, and the terminal's launcher apps from 0.3.0 still found |
 | Shown alone in a browser                 | GNOME Calculator through Shinonome's `--app airi://app/…` on a Pixel 10 Pro, filling 1920x1080                 |
 | Sound                                    | Goes through the Terminal app and not Airi. We haven't checked it                                             |
 | Pixel desktop mode and resizable windows | Should work, and we haven't tried it                                                                          |
