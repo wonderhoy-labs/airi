@@ -180,7 +180,7 @@ the Linux apps that way, then show one alone with
 | A mouse                                  | Written, but not tried on a real one                                                                          |
 | Clipboard                                | Written, but not tried yet                                                                                    |
 | Other apps opening Linux apps            | The client library's tests pass on an emulator, against Airi and a launcher app. Not with Linux behind it yet |
-| Listing apps over `adb`                  | On an emulator against a stand-in agent: the rows, an icon, and a refused unknown path. Not on a phone yet    |
+| Listing apps over `adb`                  | 0.3.0 on a Pixel 10 Pro: ten rows and a 384x384 icon; Asahi's page listed them and opened Calculator alone    |
 | Shown alone in a browser                 | GNOME Calculator through Shinonome's `--app airi://app/…` on a Pixel 10 Pro, filling 1920x1080                 |
 | Sound                                    | Goes through the Terminal app and not Airi. We haven't checked it                                             |
 | Pixel desktop mode and resizable windows | Should work, and we haven't tried it                                                                          |
@@ -288,6 +288,9 @@ apps you've added keep working.
 
 **Airi says Linux isn't running.** Tap **Start Linux**, or just open an app from your launcher. If you've closed the Terminal app's
 notification, Linux has stopped.
+
+**Airi says Linux isn't running, but it is.** The Terminal app can show port 47821 as on while it isn't passing anything through.
+In the Terminal app's settings, under **Security**, turn port 47821 off and on again.
 
 **Airi can't find the helper you installed.** Check that port 47821 is on in the Terminal app's settings, under **Security**. Then check the
 helper in the terminal:
